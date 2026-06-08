@@ -26,11 +26,17 @@ export default async function EspecialesPage() {
     }),
     prisma.specialBet.findMany({
       where: { userId },
-      include: { player: { include: { team: { select: { name: true, flag: true } } } } },
+      include: {
+        player: { include: { team: { select: { name: true, flag: true } } } },
+        payment: { select: { status: true } },
+      },
     }),
   ]);
 
-  const betMap = new Map(bets.map((b) => [b.category, b]));
+  const betMap = new Map(bets.map((b) => [b.category, {
+    player: b.player,
+    paymentStatus: (b.payment?.status ?? null) as string | null,
+  }]));
 
   return (
     <div className="app-shell min-h-screen text-white">
