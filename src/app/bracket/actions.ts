@@ -84,7 +84,7 @@ export async function submitBracketBet(formData: FormData) {
         backUrl: `${process.env.AUTH_URL}/bracket`,
       });
       await prisma.payment.update({ where: { id: payment.id }, data: { mpPreferenceId: pref.id } });
-      redirect(pref.sandbox_init_point ?? pref.init_point ?? "/bracket");
+      redirect(pref.init_point ?? "/bracket");
     }
 
     redirect("/bracket");

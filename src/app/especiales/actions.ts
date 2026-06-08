@@ -71,7 +71,7 @@ export async function getSpecialMPUrl(category: SpecialCategory) {
     where: { id: bet.payment.id },
     data: { mpPreferenceId: pref.id },
   });
-  return { redirectUrl: pref.sandbox_init_point ?? pref.init_point };
+  return { redirectUrl: pref.init_point };
 }
 
 /** Cancela la apuesta si el pool sigue abierto y el pago no fue aprobado. */

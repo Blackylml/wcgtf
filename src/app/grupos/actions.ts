@@ -39,7 +39,7 @@ export async function submitGroupBet(groupPoolId: string, predictions: Predictio
         backUrl: `${process.env.AUTH_URL}/grupos`,
       });
       await prisma.payment.update({ where: { id: payment.id }, data: { mpPreferenceId: pref.id } });
-      return { redirectUrl: pref.sandbox_init_point ?? pref.init_point };
+      return { redirectUrl: pref.init_point };
     }
 
     revalidatePath("/grupos");

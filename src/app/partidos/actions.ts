@@ -36,7 +36,7 @@ export async function submitMatchBet(matchId: string, pick: MatchPick) {
         backUrl: `${process.env.AUTH_URL}/partidos`,
       });
       await prisma.payment.update({ where: { id: payment.id }, data: { mpPreferenceId: pref.id } });
-      return { redirectUrl: pref.sandbox_init_point ?? pref.init_point };
+      return { redirectUrl: pref.init_point };
     }
 
     revalidatePath("/partidos");
