@@ -28,7 +28,6 @@ export async function createPreference(opts: {
 
   const result = await preference.create({
     body: {
-      site_id: "MLM",
       items: [{ id: opts.paymentId, title: opts.title, quantity: 1, unit_price: opts.amount, currency_id: "MXN" }],
       external_reference: opts.paymentId,
       ...(notificationUrl && { notification_url: notificationUrl }),
