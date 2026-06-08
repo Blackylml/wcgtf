@@ -13,7 +13,12 @@ export default async function GruposPage() {
   const [groups, allTeams] = await Promise.all([
     prisma.groupPool.findMany({
       orderBy: { name: "asc" },
-      include: { bets: { where: { userId }, select: { teamId: true, position: true } } },
+      include: {
+        bets: {
+          where: { userId },
+          select: { teamId: true, position: true, payment: { select: { status: true } } },
+        },
+      },
     }),
     prisma.team.findMany({
       where: { group: { not: null } },
@@ -54,7 +59,8 @@ export default async function GruposPage() {
                 price={Number(g.price)}
                 isOpen={g.isOpen}
                 teams={allTeams.filter((t) => t.group === g.name)}
-                existingBets={g.bets}
+                existingBets={g.bets.map((b) => ({ teamId: b.teamId, position: b.position }))}
+                paymentStatus={g.bets[0]?.payment?.status ?? null}
               />
             </div>
           ))}

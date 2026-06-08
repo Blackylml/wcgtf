@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle } from "@/components/PageTitle";
 import { BracketForm } from "./BracketForm";
+import { BracketBetStatus } from "./BracketBetStatus";
 import { Trophy } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -28,6 +29,7 @@ export default async function BracketPage() {
   const userBet = bracketSession
     ? await prisma.bracketBet.findUnique({
         where: { userId_bracketSessionId: { userId, bracketSessionId: bracketSession.id } },
+        include: { payment: { select: { status: true } } },
       })
     : null;
 
@@ -51,6 +53,10 @@ export default async function BracketPage() {
     const predictions = userBet.predictions as Record<string, Record<string, string> | string>;
     const teams = await prisma.team.findMany({ select: { code: true, name: true, flag: true } });
     const teamMap = new Map(teams.map((t) => [t.code, t]));
+    const price = Number(bracketSession!.price);
+    const paymentStatus = userBet.payment?.status ?? null;
+    const championCode = typeof predictions.FINAL === "string" ? predictions.FINAL : "";
+    const championLabel = `${teamMap.get(championCode)?.flag ?? ""} ${teamMap.get(championCode)?.name ?? championCode}`.trim() || "—";
 
     return (
       <Shell>
@@ -64,6 +70,13 @@ export default async function BracketPage() {
               {userBet.score} pts
             </span>
           }
+        />
+
+        <BracketBetStatus
+          price={price}
+          paymentStatus={paymentStatus}
+          championLabel={championLabel}
+          isOpen={bracketSession!.isOpen}
         />
 
         <div className="space-y-3">

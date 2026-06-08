@@ -29,7 +29,7 @@ export default async function PartidosPage({
     include: {
       homeTeam: { select: { name: true, flag: true, code: true } },
       awayTeam: { select: { name: true, flag: true, code: true } },
-      bets: { where: { userId }, select: { pick: true } },
+      bets: { where: { userId }, select: { pick: true, payment: { select: { status: true } } } },
     },
   });
 
@@ -110,6 +110,7 @@ export default async function PartidosPage({
                   price: Number(m.price),
                   penaltiesAllowed: m.penaltiesAllowed,
                   userBet: m.bets[0]?.pick ?? null,
+                  paymentStatus: m.bets[0]?.payment?.status ?? null,
                 }}
               />
             </div>

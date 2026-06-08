@@ -2,11 +2,14 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
-export async function submitBracketBet(formData: FormData) {
+type Predictions = Record<string, Record<string, string> | string>;
+
+/** Paso 1: valida el bracket completo y crea la apuesta + pago PENDING (si hay precio). */
+export async function createBracketBet(predictions: Predictions) {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) return { error: "No autenticado" };
   const userId = session.user.id;
 
   const bracketSession = await prisma.bracketSession.findFirst();
@@ -20,83 +23,92 @@ export async function submitBracketBet(formData: FormData) {
   const config = bracketSession.config as { R32: [string, string][] } | null;
   if (!config?.R32?.length) return { error: "El bracket no está configurado aún" };
 
-  // Build predictions from formData
-  const predictions: Record<string, Record<string, string> | string> = {};
+  const n = config.R32.length;
+  const r32 = (predictions.R32 ?? {}) as Record<string, string>;
+  const r16 = (predictions.R16 ?? {}) as Record<string, string>;
+  const qf = (predictions.QF ?? {}) as Record<string, string>;
+  const sf = (predictions.SF ?? {}) as Record<string, string>;
+  const count = (o: Record<string, string>) => Object.values(o).filter(Boolean).length;
 
-  // R32 picks
-  const r32: Record<string, string> = {};
-  for (let i = 0; i < 16; i++) {
-    const pick = formData.get(`R32_${i}`) as string;
-    if (pick) r32[String(i)] = pick;
-  }
-  predictions.R32 = r32;
-
-  // R16 picks
-  const r16: Record<string, string> = {};
-  for (let i = 0; i < 8; i++) {
-    const pick = formData.get(`R16_${i}`) as string;
-    if (pick) r16[String(i)] = pick;
-  }
-  predictions.R16 = r16;
-
-  // QF picks
-  const qf: Record<string, string> = {};
-  for (let i = 0; i < 4; i++) {
-    const pick = formData.get(`QF_${i}`) as string;
-    if (pick) qf[String(i)] = pick;
-  }
-  predictions.QF = qf;
-
-  // SF picks
-  const sf: Record<string, string> = {};
-  for (let i = 0; i < 2; i++) {
-    const pick = formData.get(`SF_${i}`) as string;
-    if (pick) sf[String(i)] = pick;
-  }
-  predictions.SF = sf;
-
-  const third = formData.get("THIRD") as string;
-  if (third) predictions.THIRD = third;
-
-  const champion = formData.get("FINAL") as string;
-  if (champion) predictions.FINAL = champion;
+  if (count(r32) !== n) return { error: "Completa todos los partidos de la Ronda de 32" };
+  if (count(r16) !== Math.floor(n / 2)) return { error: "Completa la Ronda de 16" };
+  if (count(qf) !== Math.floor(n / 4)) return { error: "Completa los Cuartos" };
+  if (count(sf) !== Math.floor(n / 8)) return { error: "Completa las Semifinales" };
+  if (!predictions.THIRD || !predictions.FINAL) return { error: "Elige tercer lugar y campeón" };
 
   const price = Number(bracketSession.price);
 
   if (price > 0) {
-    // Create the pending payment and link the bracket bet to it.
-    const payment = await prisma.payment.create({
-      data: { userId, amount: price, status: "PENDING" },
-    });
+    const payment = await prisma.payment.create({ data: { userId, amount: price, status: "PENDING" } });
     await prisma.bracketBet.create({
       data: { userId, bracketSessionId: bracketSession.id, predictions, paymentId: payment.id },
     });
-
-    // With MercadoPago configured, send the user to checkout. Otherwise the bet
-    // stays PENDING and an admin approves it manually (same fallback as the other pools).
-    if (process.env.MP_ACCESS_TOKEN) {
-      const { createPreference } = await import("@/lib/mercadopago");
-      try {
-        const pref = await createPreference({
-          title: "Bracket Eliminatorias WCGTF 2026",
-          amount: price,
-          userId,
-          paymentId: payment.id,
-          backUrl: `${process.env.AUTH_URL}/bracket`,
-        });
-        await prisma.payment.update({ where: { id: payment.id }, data: { mpPreferenceId: pref.id } });
-        redirect(pref.init_point ?? "/bracket");
-      } catch {
-        redirect("/bracket");
-      }
-    }
-
-    redirect("/bracket");
+    revalidatePath("/bracket");
+    return { price };
   }
 
   await prisma.bracketBet.create({
     data: { userId, bracketSessionId: bracketSession.id, predictions },
   });
+  revalidatePath("/bracket");
+  return { price: 0 };
+}
 
-  redirect("/bracket");
+/** Paso 2: genera la URL de MercadoPago para el pago pendiente del bracket. */
+export async function getBracketMPUrl() {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autenticado" };
+  const userId = session.user.id;
+
+  const bracketSession = await prisma.bracketSession.findFirst();
+  if (!bracketSession) return { error: "Bracket no disponible" };
+
+  const bet = await prisma.bracketBet.findUnique({
+    where: { userId_bracketSessionId: { userId, bracketSessionId: bracketSession.id } },
+    include: { payment: true },
+  });
+  if (!bet?.payment) return { error: "No se encontró la apuesta o el pago" };
+  if (bet.payment.status !== "PENDING") return { error: "El pago ya no está pendiente" };
+  if (!process.env.MP_ACCESS_TOKEN) return { error: "MercadoPago no configurado" };
+
+  const { createPreference } = await import("@/lib/mercadopago");
+  let pref;
+  try {
+    pref = await createPreference({
+      title: "Bracket Eliminatorias WCGTF 2026",
+      amount: Number(bet.payment.amount),
+      userId,
+      paymentId: bet.payment.id,
+      backUrl: `${process.env.AUTH_URL}/bracket`,
+    });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("MP createPreference error:", msg);
+    return { error: `Error al crear preferencia MP: ${msg}` };
+  }
+  if (!pref.init_point) return { error: "MercadoPago no devolvió URL de pago" };
+  await prisma.payment.update({ where: { id: bet.payment.id }, data: { mpPreferenceId: pref.id } });
+  return { redirectUrl: pref.init_point };
+}
+
+/** Cancela el bracket si la sesión sigue abierta y el pago no fue aprobado. */
+export async function deleteBracketBet() {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autenticado" };
+  const userId = session.user.id;
+
+  const bracketSession = await prisma.bracketSession.findFirst();
+  if (!bracketSession?.isOpen) return { error: "No puedes cancelar con el bracket cerrado" };
+
+  const bet = await prisma.bracketBet.findUnique({
+    where: { userId_bracketSessionId: { userId, bracketSessionId: bracketSession.id } },
+    include: { payment: true },
+  });
+  if (!bet) return { error: "No tienes bracket enviado" };
+  if (bet.payment?.status === "APPROVED") return { error: "El pago ya fue aprobado, contacta al admin" };
+
+  await prisma.bracketBet.delete({ where: { id: bet.id } });
+  if (bet.paymentId) await prisma.payment.delete({ where: { id: bet.paymentId } });
+  revalidatePath("/bracket");
+  return { success: true };
 }
