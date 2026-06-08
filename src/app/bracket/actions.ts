@@ -76,15 +76,19 @@ export async function submitBracketBet(formData: FormData) {
     // stays PENDING and an admin approves it manually (same fallback as the other pools).
     if (process.env.MP_ACCESS_TOKEN) {
       const { createPreference } = await import("@/lib/mercadopago");
-      const pref = await createPreference({
-        title: "Bracket Eliminatorias WCGTF 2026",
-        amount: price,
-        userId,
-        paymentId: payment.id,
-        backUrl: `${process.env.AUTH_URL}/bracket`,
-      });
-      await prisma.payment.update({ where: { id: payment.id }, data: { mpPreferenceId: pref.id } });
-      redirect(pref.init_point ?? "/bracket");
+      try {
+        const pref = await createPreference({
+          title: "Bracket Eliminatorias WCGTF 2026",
+          amount: price,
+          userId,
+          paymentId: payment.id,
+          backUrl: `${process.env.AUTH_URL}/bracket`,
+        });
+        await prisma.payment.update({ where: { id: payment.id }, data: { mpPreferenceId: pref.id } });
+        redirect(pref.init_point ?? "/bracket");
+      } catch {
+        redirect("/bracket");
+      }
     }
 
     redirect("/bracket");

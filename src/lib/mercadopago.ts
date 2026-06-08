@@ -20,11 +20,18 @@ export async function createPreference(opts: {
 }) {
   const client = getClient();
   const preference = new Preference(client);
+
+  // notification_url must be a public HTTPS URL — skip it in local dev
+  const notificationUrl = process.env.AUTH_URL?.startsWith("https://")
+    ? `${process.env.AUTH_URL}/api/mp/webhook`
+    : undefined;
+
   const result = await preference.create({
     body: {
+      site_id: "MLM",
       items: [{ id: opts.paymentId, title: opts.title, quantity: 1, unit_price: opts.amount, currency_id: "MXN" }],
       external_reference: opts.paymentId,
-      notification_url: `${process.env.AUTH_URL}/api/mp/webhook`,
+      ...(notificationUrl && { notification_url: notificationUrl }),
       back_urls: {
         success: `${opts.backUrl}?payment=ok`,
         failure: `${opts.backUrl}?payment=fail`,

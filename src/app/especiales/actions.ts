@@ -60,18 +60,27 @@ export async function getSpecialMPUrl(category: SpecialCategory) {
   if (!process.env.MP_ACCESS_TOKEN) return { error: "MercadoPago no configurado" };
 
   const { createPreference } = await import("@/lib/mercadopago");
-  const pref = await createPreference({
-    title: `Apuesta ${CAT_LABELS[category]} WCGTF 2026`,
-    amount: Number(bet.payment.amount),
-    userId,
-    paymentId: bet.payment.id,
-    backUrl: `${process.env.AUTH_URL}/especiales`,
-  });
+  let pref;
+  try {
+    pref = await createPreference({
+      title: `Apuesta ${CAT_LABELS[category]} WCGTF 2026`,
+      amount: Number(bet.payment.amount),
+      userId,
+      paymentId: bet.payment.id,
+      backUrl: `${process.env.AUTH_URL}/especiales`,
+    });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("MP createPreference error:", msg);
+    return { error: `Error al crear preferencia MP: ${msg}` };
+  }
+  const checkoutUrl = pref.init_point;
+  if (!checkoutUrl) return { error: "MercadoPago no devolvió URL de pago — verifica credenciales de producción" };
   await prisma.payment.update({
     where: { id: bet.payment.id },
     data: { mpPreferenceId: pref.id },
   });
-  return { redirectUrl: pref.init_point };
+  return { redirectUrl: checkoutUrl };
 }
 
 /** Cancela la apuesta si el pool sigue abierto y el pago no fue aprobado. */
