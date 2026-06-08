@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth (NextAuth v5 / Auth.js) ───────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+
+  accounts     Account[]
+  sessions     Session[]
+  groupBets    GroupBet[]
+  matchBets    MatchBet[]
+  bracketBets  BracketBet[]
+  specialBets  SpecialBet[]
+  payments     Payment[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Tournament ──────────────────────────────────────────────────────────────
+
+model TournamentConfig {
+  id                  String  @id @default(cuid())
+  penaltiesAsDrawInKO Boolean @default(false) // admin toggle: penales = empate en eliminatorias
+}
+
+model Team {
+  id    String  @id @default(cuid())
+  name  String
+  code  String  @unique // "MEX", "ARG", etc.
+  flag  String?          // URL o emoji
+  group String?          // "A" a "L"
+
+  players     Player[]
+  homeMatches Match[]    @relation("HomeTeam")
+  awayMatches Match[]    @relation("AwayTeam")
+  groupBets   GroupBet[]
+}
+
+// ─── Fase de Grupos ──────────────────────────────────────────────────────────
+
+model GroupPool {
+  id       String  @id @default(cuid())
+  name     String  @unique // "A", "B", ... "L"
+  isOpen   Boolean @default(false)
+  price    Decimal @default(0) @db.Decimal(10, 2)
+
+  bets GroupBet[]
+}
+
+model GroupBet {
+  id          String   @id @default(cuid())
+  userId      String
+  groupPoolId String
+  teamId      String
+  position    Int      // 1, 2, 3, 4
+  isCorrect   Boolean?
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  groupPool GroupPool @relation(fields: [groupPoolId], references: [id])
+  team      Team      @relation(fields: [teamId], references: [id])
+  payment   Payment?  @relation(fields: [paymentId], references: [id])
+  paymentId String?
+
+  @@unique([userId, groupPoolId, teamId])
+}
+
+// ─── Partidos ─────────────────────────────────────────────────────────────────
+
+model Match {
+  id               String   @id @default(cuid())
+  matchNumber      Int      @unique
+  homeTeamId       String?
+  awayTeamId       String?
+  homeLabel        String?  // "1o Grupo A", "Ganador M74", etc.
+  awayLabel        String?
+  stage            Stage
+  scheduledAt      DateTime
+  venue            String?
+  homeScore        Int?
+  awayScore        Int?
+  penaltiesAllowed Boolean  @default(false)
+  penaltiesWinner  String?
+  isOpen           Boolean  @default(false)
+  price            Decimal  @default(0) @db.Decimal(10, 2)
+
+  homeTeam Team?      @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam Team?      @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  bets     MatchBet[]
+}
+
+enum Stage {
+  GROUP
+  R32
+  R16
+  QF
+  SF
+  THIRD
+  FINAL
+}
+
+model MatchBet {
+  id        String    @id @default(cuid())
+  userId    String
+  matchId   String
+  pick      MatchPick
+  isCorrect Boolean?
+  createdAt DateTime  @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  match     Match    @relation(fields: [matchId], references: [id])
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+  paymentId String?
+
+  @@unique([userId, matchId])
+}
+
+enum MatchPick {
+  HOME
+  DRAW
+  AWAY
+}
+
+// ─── Bracket Eliminatorias ───────────────────────────────────────────────────
+
+model BracketSession {
+  id      String  @id @default(cuid())
+  isOpen  Boolean @default(false)
+  price   Decimal @default(0) @db.Decimal(10, 2)
+  config  Json?   // { "R32": [["MEX","USA"],["ARG","BRA"],...16 pairs] }
+
+  bets BracketBet[]
+}
+
+model BracketBet {
+  id               String   @id @default(cuid())
+  userId           String
+  bracketSessionId String
+  predictions      Json     // { "R32_M1": "MEX", "R16_M1": "ARG", ... "FINAL": "BRA" }
+  score            Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  user    User           @relation(fields: [userId], references: [id])
+  session BracketSession @relation(fields: [bracketSessionId], references: [id])
+  payment Payment?       @relation(fields: [paymentId], references: [id])
+  paymentId String?
+
+  @@unique([userId, bracketSessionId])
+}
+
+// ─── Premios Especiales ───────────────────────────────────────────────────────
+
+model Player {
+  id     String @id @default(cuid())
+  name   String
+  teamId String
+
+  team          Team         @relation(fields: [teamId], references: [id])
+  specialBets   SpecialBet[]
+  wonCategories SpecialPool[]
+
+  @@unique([name, teamId])
+}
+
+model SpecialPool {
+  id       String          @id @default(cuid())
+  category SpecialCategory @unique
+  price    Decimal         @default(0) @db.Decimal(10, 2)
+  isOpen   Boolean         @default(false)
+  winnerId String?
+
+  winner Player?      @relation(fields: [winnerId], references: [id])
+  bets   SpecialBet[]
+}
+
+model SpecialBet {
+  id        String          @id @default(cuid())
+  userId    String
+  category  SpecialCategory
+  playerId  String
+  isCorrect Boolean?
+  createdAt DateTime        @default(now())
+
+  user      User        @relation(fields: [userId], references: [id])
+  player    Player      @relation(fields: [playerId], references: [id])
+  pool      SpecialPool @relation(fields: [category], references: [category])
+  payment   Payment?    @relation(fields: [paymentId], references: [id])
+  paymentId String?
+
+  @@unique([userId, category])
+}
+
+enum SpecialCategory {
+  TOP_SCORER
+  BEST_PLAYER
+  BEST_GOALKEEPER
+  BEST_YOUNG_PLAYER
+}
+
+// ─── Pagos ────────────────────────────────────────────────────────────────────
+
+model Payment {
+  id             String        @id @default(cuid())
+  userId         String
+  mpPaymentId    String?       @unique
+  mpPreferenceId String?
+  amount         Decimal       @db.Decimal(10, 2)
+  status         PaymentStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id])
+  groupBets   GroupBet[]
+  matchBets   MatchBet[]
+  bracketBets BracketBet[]
+  specialBets SpecialBet[]
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}

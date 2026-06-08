@@ -1,0 +1,18 @@
+{
+  "name": "WCGTF 2026 — Quiniela Mundial",
+  "short_name": "WCGTF 2026",
+  "description": "Apuestas del Mundial de Futbol 2026",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#16a34a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
