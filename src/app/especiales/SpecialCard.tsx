@@ -4,17 +4,20 @@ import { useState } from "react";
 import type { ElementType } from "react";
 import { SpecialCategory } from "@/generated/prisma/client";
 import { submitSpecialBet } from "./actions";
-import { Check, Search, Lock } from "lucide-react";
+import { Check, Search, Lock, Trophy, Star, Shield, Award } from "lucide-react";
+
+const ICON_MAP: Record<string, ElementType> = { Trophy, Star, Shield, Award };
 
 type Player = { id: string; name: string; team: { name: string; flag: string | null } };
 
 export function SpecialCard({
-  category, label, icon: Icon, price, isOpen, players, existingBet,
+  category, label, iconName, price, isOpen, players, existingBet,
 }: {
-  category: SpecialCategory; label: string; icon: ElementType; price: number; isOpen: boolean;
+  category: SpecialCategory; label: string; iconName: string; price: number; isOpen: boolean;
   players: Player[];
   existingBet: { player: { name: string; team: { name: string; flag: string | null } } } | null;
 }) {
+  const Icon = ICON_MAP[iconName] ?? Trophy;
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState("");
   const [loading, setLoading] = useState(false);

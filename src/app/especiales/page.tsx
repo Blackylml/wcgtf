@@ -5,13 +5,13 @@ import { BottomNav } from "@/components/BottomNav";
 import { PageTitle, StatPill } from "@/components/PageTitle";
 import { SpecialCard } from "./SpecialCard";
 import { SpecialCategory } from "@/generated/prisma/client";
-import { Trophy, Shield, Award, Star } from "lucide-react";
+import { Star } from "lucide-react";
 
-const CATEGORIES: { key: SpecialCategory; label: string; icon: React.ElementType }[] = [
-  { key: "TOP_SCORER", label: "Goleador del torneo", icon: Trophy },
-  { key: "BEST_PLAYER", label: "Jugador del torneo", icon: Star },
-  { key: "BEST_GOALKEEPER", label: "Mejor portero", icon: Shield },
-  { key: "BEST_YOUNG_PLAYER", label: "Mejor jugador joven", icon: Award },
+const CATEGORIES: { key: SpecialCategory; label: string; iconName: string }[] = [
+  { key: "TOP_SCORER", label: "Goleador del torneo", iconName: "Trophy" },
+  { key: "BEST_PLAYER", label: "Jugador del torneo", iconName: "Star" },
+  { key: "BEST_GOALKEEPER", label: "Mejor portero", iconName: "Shield" },
+  { key: "BEST_YOUNG_PLAYER", label: "Mejor jugador joven", iconName: "Award" },
 ];
 
 export default async function EspecialesPage() {
@@ -51,14 +51,14 @@ export default async function EspecialesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {CATEGORIES.map(({ key, label, icon }, i) => {
+            {CATEGORIES.map(({ key, label, iconName }, i) => {
               const pool = pools.find((p) => p.category === key);
               return (
                 <div key={key} className="animate-rise" style={{ animationDelay: `${i * 60}ms` }}>
                   <SpecialCard
                     category={key}
                     label={label}
-                    icon={icon}
+                    iconName={iconName}
                     price={pool ? Number(pool.price) : 0}
                     isOpen={pool?.isOpen ?? false}
                     players={players}
