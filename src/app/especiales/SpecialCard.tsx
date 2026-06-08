@@ -131,19 +131,33 @@ export function SpecialCard({
                   className="w-full bg-black/30 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-purple-400/50 focus:ring-2 focus:ring-purple-400/15 focus:outline-none"
                 />
               </div>
-              <select
-                value={selected}
-                onChange={(e) => setSelected(e.target.value)}
-                size={5}
-                className="w-full bg-black/30 border border-white/10 rounded-lg text-sm text-slate-200 overflow-auto focus:border-purple-400/50 focus:outline-none p-1 flex-1"
-              >
-                <option value="">— Seleccionar —</option>
-                {filtered.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.team.flag} {p.name} · {p.team.name}
-                  </option>
+              <div className="flex-1 overflow-y-auto rounded-xl border border-white/10 bg-black/30 divide-y divide-white/[0.06] max-h-52">
+                {filtered.length === 0 ? (
+                  <p className="text-center text-xs text-slate-600 py-4">Sin resultados</p>
+                ) : filtered.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelected(p.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                      selected === p.id
+                        ? "bg-purple-400/15 border-l-2 border-purple-400"
+                        : "hover:bg-white/[0.04] border-l-2 border-transparent"
+                    }`}
+                  >
+                    <span className="text-lg leading-none shrink-0">{p.team.flag}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-white truncate">{p.name}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{p.team.name}</p>
+                    </div>
+                    {selected === p.id && (
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-purple-400 grid place-items-center">
+                        <Check size={11} className="text-white" />
+                      </span>
+                    )}
+                  </button>
                 ))}
-              </select>
+              </div>
               {error && <p className="text-red-400 text-xs">{error}</p>}
               <button
                 onClick={handleConfirm}

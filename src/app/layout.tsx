@@ -24,7 +24,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${sans.variable} ${display.variable} ${mono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-[#070b16]">{children}</body>
+      <body className="min-h-full flex flex-col bg-[#070b16]">
+        {children}
+        <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}` }} />
+      </body>
     </html>
   );
 }

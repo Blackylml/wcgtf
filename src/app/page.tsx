@@ -123,40 +123,40 @@ export default async function HomePage() {
                 Próximo partido
               </p>
 
-              <div className="flex items-start justify-between gap-2">
-                {/* Home */}
-                <div className="flex flex-col items-center gap-2.5 w-[88px]">
+              {/* Teams row */}
+              <div className="flex items-center justify-between gap-2 mb-5">
+                <div className="flex flex-col items-center gap-2 w-[80px] shrink-0">
                   <FlagCircle
                     flag={nextMatch.homeTeam?.flag}
                     code={nextMatch.homeTeam?.code}
-                    size={68}
+                    size={62}
                     ring="ring-green-400/40"
                   />
-                  <span className="text-sm font-bold text-white text-center leading-tight">
+                  <span className="text-xs font-bold text-white text-center leading-tight line-clamp-2">
                     {homeName}
                   </span>
                 </div>
 
-                {/* Center: VS + countdown */}
-                <div className="flex-1 flex flex-col items-center gap-4 pt-1">
-                  <span className="grid place-items-center w-11 h-11 rounded-full bg-[#0b1424] ring-1 ring-green-400/60 animate-halo-pulse">
-                    <span className="font-display font-extrabold text-xs text-green-400 tracking-wide">VS</span>
-                  </span>
-                  <Countdown target={nextMatch.scheduledAt.toISOString()} />
-                </div>
+                <span className="grid place-items-center w-11 h-11 rounded-full bg-[#0b1424] ring-1 ring-green-400/60 animate-halo-pulse shrink-0">
+                  <span className="font-display font-extrabold text-xs text-green-400 tracking-wide">VS</span>
+                </span>
 
-                {/* Away */}
-                <div className="flex flex-col items-center gap-2.5 w-[88px]">
+                <div className="flex flex-col items-center gap-2 w-[80px] shrink-0">
                   <FlagCircle
                     flag={nextMatch.awayTeam?.flag}
                     code={nextMatch.awayTeam?.code}
-                    size={68}
+                    size={62}
                     ring="ring-blue-400/40"
                   />
-                  <span className="text-sm font-bold text-white text-center leading-tight">
+                  <span className="text-xs font-bold text-white text-center leading-tight line-clamp-2">
                     {awayName}
                   </span>
                 </div>
+              </div>
+
+              {/* Countdown row — full width */}
+              <div className="flex justify-center">
+                <Countdown target={nextMatch.scheduledAt.toISOString()} />
               </div>
             </div>
           </section>
