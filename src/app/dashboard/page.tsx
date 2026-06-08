@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { redirect } from "next/navigation";
 import { SpecialCategory } from "@/generated/prisma/client";
 import { Check, X, Clock, Crown } from "lucide-react";
+import { StandingsTable } from "./StandingsTable";
 
 const SPECIAL_LABELS: Record<SpecialCategory, string> = {
   TOP_SCORER: "Goleador",
@@ -135,47 +136,8 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Full standings table */}
-        <div className="animate-rise mb-5 rounded-2xl border border-white/[0.08] bg-white/[0.025] overflow-hidden" style={{ animationDelay: "140ms" }}>
-          <div className="px-4 py-3.5 border-b border-white/[0.06]">
-            <h2 className="font-display text-sm font-bold">Tabla General</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-white/[0.06] text-slate-500">
-                  <th className="px-3 py-2 text-left">#</th>
-                  <th className="px-3 py-2 text-left">Jugador</th>
-                  <th className="px-3 py-2 text-right">G</th>
-                  <th className="px-3 py-2 text-right">P</th>
-                  <th className="px-3 py-2 text-right">E</th>
-                  <th className="px-3 py-2 text-right">B</th>
-                  <th className="px-3 py-2 text-right font-bold text-white">Tot</th>
-                </tr>
-              </thead>
-              <tbody>
-                {standings.map((u, i) => (
-                  <tr key={u.id}
-                    className={`border-b border-white/[0.05] ${u.id === userId ? "bg-green-400/[0.08]" : "hover:bg-white/[0.03]"}`}>
-                    <td className={`px-3 py-2.5 font-mono ${i < 3 ? "text-amber-300 font-bold" : "text-slate-500"}`}>{i + 1}</td>
-                    <td className="px-3 py-2.5 font-medium text-white">
-                      {u.name.split(" ")[0]}
-                      {u.id === userId && <span className="ml-1 text-[10px] font-semibold text-green-400">tú</span>}
-                    </td>
-                    <td className="px-3 py-2.5 text-right text-slate-400 tabular-nums">{u.groupScore}</td>
-                    <td className="px-3 py-2.5 text-right text-slate-400 tabular-nums">{u.matchScore}</td>
-                    <td className="px-3 py-2.5 text-right text-slate-400 tabular-nums">{u.specialScore}</td>
-                    <td className="px-3 py-2.5 text-right text-slate-400 tabular-nums">{u.bracketScore}</td>
-                    <td className="px-3 py-2.5 text-right font-bold text-amber-300 tabular-nums">{u.total}</td>
-                  </tr>
-                ))}
-                {standings.length === 0 && (
-                  <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-600">Sin participantes</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {/* Ranking — tabbed per bet type */}
+        <StandingsTable standings={standings} currentUserId={userId} />
 
         {/* My bets */}
         <div className="grid grid-cols-1 gap-3">
