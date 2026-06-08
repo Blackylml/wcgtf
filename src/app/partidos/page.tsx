@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle, StatPill } from "@/components/PageTitle";
+import { ModuleEntryGate } from "@/components/ModuleEntryGate";
+import { getModuleAccess } from "@/lib/module-access";
+import { MODULE_META } from "@/lib/modules";
 import { MatchCard } from "./MatchCard";
 import { Stage } from "@/generated/prisma/client";
 import { CalendarDays } from "lucide-react";
@@ -29,9 +32,11 @@ export default async function PartidosPage({
     include: {
       homeTeam: { select: { name: true, flag: true, code: true } },
       awayTeam: { select: { name: true, flag: true, code: true } },
-      bets: { where: { userId }, select: { pick: true, payment: { select: { status: true } } } },
+      bets: { where: { userId }, select: { pick: true } },
     },
   });
+
+  const access = await getModuleAccess(userId, "MATCHES");
 
   // Determine available stages (have matches)
   const availableStages = STAGE_ORDER.filter((s) => matches.some((m) => m.stage === s));
@@ -53,6 +58,14 @@ export default async function PartidosPage({
             title="Partidos"
             subtitle="Apuesta por el resultado de cada partido del torneo."
             right={<StatPill>{bettedCount}/{filtered.length}</StatPill>}
+          />
+          <ModuleEntryGate
+            module="MATCHES"
+            label={MODULE_META.MATCHES.label}
+            accent={MODULE_META.MATCHES.accent}
+            price={access.price}
+            paymentStatus={access.paymentStatus}
+            entryOpen={access.entryOpen}
           />
         </div>
 
@@ -107,10 +120,9 @@ export default async function PartidosPage({
                   scheduledAt: m.scheduledAt,
                   venue: m.venue,
                   isOpen: m.isOpen,
-                  price: Number(m.price),
                   penaltiesAllowed: m.penaltiesAllowed,
                   userBet: m.bets[0]?.pick ?? null,
-                  paymentStatus: m.bets[0]?.payment?.status ?? null,
+                  enabled: access.entered,
                 }}
               />
             </div>

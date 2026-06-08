@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle, StatPill } from "@/components/PageTitle";
+import { ModuleEntryGate } from "@/components/ModuleEntryGate";
+import { getModuleAccess } from "@/lib/module-access";
+import { MODULE_META } from "@/lib/modules";
 import { SpecialCard } from "./SpecialCard";
 import { SpecialCategory } from "@/generated/prisma/client";
 import { Star } from "lucide-react";
@@ -18,7 +21,7 @@ export default async function EspecialesPage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const [pools, players, bets] = await Promise.all([
+  const [pools, players, bets, access] = await Promise.all([
     prisma.specialPool.findMany(),
     prisma.player.findMany({
       include: { team: { select: { name: true, flag: true } } },
@@ -26,17 +29,12 @@ export default async function EspecialesPage() {
     }),
     prisma.specialBet.findMany({
       where: { userId },
-      include: {
-        player: { include: { team: { select: { name: true, flag: true } } } },
-        payment: { select: { status: true } },
-      },
+      include: { player: { include: { team: { select: { name: true, flag: true } } } } },
     }),
+    getModuleAccess(userId, "SPECIALS"),
   ]);
 
-  const betMap = new Map(bets.map((b) => [b.category, {
-    player: b.player,
-    paymentStatus: (b.payment?.status ?? null) as string | null,
-  }]));
+  const betMap = new Map(bets.map((b) => [b.category, { player: b.player }]));
 
   return (
     <div className="app-shell min-h-screen text-white">
@@ -47,8 +45,17 @@ export default async function EspecialesPage() {
           icon={Star}
           accent="purple"
           title="Premios Especiales"
-          subtitle="Se revelan al final del torneo. Cada categoría tiene su propia bolsa."
+          subtitle="Se revelan al final del torneo. Una sola entrada cubre las 4 categorías."
           right={<StatPill>{bets.length}/4</StatPill>}
+        />
+
+        <ModuleEntryGate
+          module="SPECIALS"
+          label={MODULE_META.SPECIALS.label}
+          accent={MODULE_META.SPECIALS.accent}
+          price={access.price}
+          paymentStatus={access.paymentStatus}
+          entryOpen={access.entryOpen}
         />
 
         {players.length === 0 ? (
@@ -65,8 +72,8 @@ export default async function EspecialesPage() {
                     category={key}
                     label={label}
                     iconName={iconName}
-                    price={pool ? Number(pool.price) : 0}
                     isOpen={pool?.isOpen ?? false}
+                    enabled={access.entered}
                     players={players}
                     existingBet={betMap.get(key) ?? null}
                   />

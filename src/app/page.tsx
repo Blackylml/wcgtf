@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { Countdown } from "@/components/Countdown";
 import { FlagCircle } from "@/components/FlagCircle";
+import { getApprovedModules } from "@/lib/module-access";
 import Link from "next/link";
 import {
   LayoutGrid, CalendarDays, Trophy, Star, ArrowRight, BarChart3,
@@ -104,7 +105,12 @@ export default async function HomePage() {
     prisma.bracketBet.findFirst({ where: { userId }, select: { score: true } }),
   ]);
 
-  const totalPts = matchBetsCorrect + groupBetsCorrect + specialBetsCorrect + (bracketBet?.score ?? 0);
+  const validModules = await getApprovedModules(userId);
+  const totalPts =
+    (validModules.has("MATCHES") ? matchBetsCorrect : 0) +
+    (validModules.has("GROUPS") ? groupBetsCorrect : 0) +
+    (validModules.has("SPECIALS") ? specialBetsCorrect : 0) +
+    (validModules.has("BRACKET") ? (bracketBet?.score ?? 0) : 0);
 
   const homeName = nextMatch?.homeTeam?.name ?? nextMatch?.homeLabel ?? "Por definir";
   const awayName = nextMatch?.awayTeam?.name ?? nextMatch?.awayLabel ?? "Por definir";

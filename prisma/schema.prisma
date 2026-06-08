@@ -254,6 +254,7 @@ enum SpecialCategory {
 model Payment {
   id             String        @id @default(cuid())
   userId         String
+  module         Module?       // si != null, este pago es la ENTRADA a un módulo
   mpPaymentId    String?       @unique
   mpPreferenceId String?
   amount         Decimal       @db.Decimal(10, 2)
@@ -273,4 +274,21 @@ enum PaymentStatus {
   APPROVED
   REJECTED
   CANCELLED
+}
+
+// ─── Cobro por módulo ──────────────────────────────────────────────────────────
+// Un solo precio por módulo. El usuario paga una vez (un Payment con `module`)
+// y eso lo mete a la pool de ese módulo; sus apuestas suman al aprobarse el pago.
+
+enum Module {
+  GROUPS
+  MATCHES
+  BRACKET
+  SPECIALS
+}
+
+model ModuleSettings {
+  module    Module  @id
+  price     Decimal @default(0) @db.Decimal(10, 2)
+  entryOpen Boolean @default(true)
 }

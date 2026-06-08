@@ -25,7 +25,7 @@ export default async function DashboardPage() {
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  const [groupBets, matchBets, specialBets, bracketBet, allUsers] = await Promise.all([
+  const [groupBets, matchBets, specialBets, bracketBet, allUsers, moduleSettings] = await Promise.all([
     prisma.groupBet.findMany({
       where: { userId },
       include: { groupPool: true, team: true },
@@ -44,22 +44,32 @@ export default async function DashboardPage() {
     prisma.user.findMany({
       select: {
         id: true, name: true, email: true,
-        matchBets: { where: { isCorrect: true, OR: [{ paymentId: null }, { payment: { status: "APPROVED" } }] } },
-        groupBets: { where: { isCorrect: true, OR: [{ paymentId: null }, { payment: { status: "APPROVED" } }] } },
-        specialBets: { where: { isCorrect: true, OR: [{ paymentId: null }, { payment: { status: "APPROVED" } }] } },
-        bracketBets: { where: { OR: [{ paymentId: null }, { payment: { status: "APPROVED" } }] }, select: { score: true } },
+        payments: { where: { module: { not: null }, status: "APPROVED" }, select: { module: true } },
+        matchBets: { where: { isCorrect: true }, select: { id: true } },
+        groupBets: { where: { isCorrect: true }, select: { id: true } },
+        specialBets: { where: { isCorrect: true }, select: { id: true } },
+        bracketBets: { select: { score: true } },
       },
     }),
+    prisma.moduleSettings.findMany(),
   ]);
 
+  // Un módulo con precio > 0 solo cuenta si el usuario tiene su entrada APROBADA.
+  const pricedModules = new Set(moduleSettings.filter((s) => Number(s.price) > 0).map((s) => s.module));
+  const valid = (paidModules: Set<string>, m: string) => !pricedModules.has(m as never) || paidModules.has(m);
+
   const standings = allUsers
-    .map((u) => ({
-      id: u.id, name: u.name ?? u.email ?? "—",
-      matchScore: u.matchBets.length,
-      groupScore: u.groupBets.length,
-      specialScore: u.specialBets.length,
-      bracketScore: u.bracketBets.reduce((s, b) => s + b.score, 0),
-    }))
+    .map((u) => {
+      const paid = new Set(u.payments.map((p) => p.module).filter(Boolean) as string[]);
+      return {
+        id: u.id,
+        name: u.name ?? u.email ?? "—",
+        groupScore: valid(paid, "GROUPS") ? u.groupBets.length : 0,
+        matchScore: valid(paid, "MATCHES") ? u.matchBets.length : 0,
+        specialScore: valid(paid, "SPECIALS") ? u.specialBets.length : 0,
+        bracketScore: valid(paid, "BRACKET") ? u.bracketBets.reduce((s, b) => s + b.score, 0) : 0,
+      };
+    })
     .map((u) => ({ ...u, total: u.matchScore + u.groupScore + u.specialScore + u.bracketScore }))
     .sort((a, b) => b.total - a.total);
 

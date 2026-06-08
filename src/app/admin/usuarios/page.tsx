@@ -4,32 +4,39 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserActions } from "./UserActions";
 
-type PayInfo = { status: string } | null;
-const isApproved = (p: PayInfo) => p?.status === "APPROVED";
-const isFreeOrApproved = (paymentId: string | null, p: PayInfo) => paymentId === null || isApproved(p);
-
 export default async function UsuariosAdminPage() {
   const session = await auth();
   const myId = session?.user?.id;
 
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: "asc" },
-    select: {
-      id: true, name: true, email: true, role: true, createdAt: true,
-      groupBets: { select: { isCorrect: true, paymentId: true, groupPoolId: true, payment: { select: { status: true } } } },
-      matchBets: { select: { isCorrect: true, paymentId: true, payment: { select: { status: true } } } },
-      specialBets: { select: { isCorrect: true, paymentId: true, payment: { select: { status: true } } } },
-      bracketBets: { select: { score: true, paymentId: true, payment: { select: { status: true } } } },
-      payments: { select: { amount: true, status: true } },
-    },
-  });
+  const [users, moduleSettings] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true, name: true, email: true, role: true, createdAt: true,
+        groupBets: { select: { isCorrect: true, groupPoolId: true } },
+        matchBets: { select: { isCorrect: true } },
+        specialBets: { select: { isCorrect: true } },
+        bracketBets: { select: { score: true } },
+        payments: { select: { amount: true, status: true, module: true } },
+      },
+    }),
+    prisma.moduleSettings.findMany(),
+  ]);
+
+  // Un módulo con precio > 0 solo cuenta si el usuario tiene su entrada APROBADA.
+  const pricedModules = new Set(moduleSettings.filter((s) => Number(s.price) > 0).map((s) => String(s.module)));
 
   const rows = users.map((u) => {
+    const approvedModules = new Set(
+      u.payments.filter((p) => p.module && p.status === "APPROVED").map((p) => String(p.module))
+    );
+    const valid = (m: string) => !pricedModules.has(m) || approvedModules.has(m);
+
     const points =
-      u.matchBets.filter((b) => b.isCorrect === true && isFreeOrApproved(b.paymentId, b.payment)).length +
-      u.groupBets.filter((b) => b.isCorrect === true && isFreeOrApproved(b.paymentId, b.payment)).length +
-      u.specialBets.filter((b) => b.isCorrect === true && isFreeOrApproved(b.paymentId, b.payment)).length +
-      u.bracketBets.filter((b) => isFreeOrApproved(b.paymentId, b.payment)).reduce((s, b) => s + b.score, 0);
+      (valid("MATCHES") ? u.matchBets.filter((b) => b.isCorrect === true).length : 0) +
+      (valid("GROUPS") ? u.groupBets.filter((b) => b.isCorrect === true).length : 0) +
+      (valid("SPECIALS") ? u.specialBets.filter((b) => b.isCorrect === true).length : 0) +
+      (valid("BRACKET") ? u.bracketBets.reduce((s, b) => s + b.score, 0) : 0);
 
     const paid = u.payments.filter((p) => p.status === "APPROVED").reduce((s, p) => s + Number(p.amount), 0);
     const pending = u.payments.filter((p) => p.status === "PENDING").reduce((s, p) => s + Number(p.amount), 0);

@@ -5,6 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+const MODULE_LABEL: Record<string, string> = {
+  GROUPS: "Grupos", MATCHES: "Partidos", BRACKET: "Bracket", SPECIALS: "Especiales",
+};
+
 const STATUS_LABEL: Record<PaymentStatus, string> = {
   PENDING: "Pendiente",
   APPROVED: "Aprobado",
@@ -82,7 +86,10 @@ export default async function PagosAdminPage() {
             <div className="flex items-center gap-4">
               <Badge className={STATUS_COLOR[p.status]}>{STATUS_LABEL[p.status]}</Badge>
               <div>
-                <p className="text-sm font-medium">{p.user.name ?? p.user.email}</p>
+                <p className="text-sm font-medium">
+                  {p.user.name ?? p.user.email}
+                  {p.module && <span className="ml-2 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5">{MODULE_LABEL[p.module]}</span>}
+                </p>
                 <p className="text-xs text-gray-400">
                   {p.mpPaymentId ? `MP: ${p.mpPaymentId}` : "Sin ID de MP"} ·{" "}
                   {new Date(p.createdAt).toLocaleDateString("es-MX")}

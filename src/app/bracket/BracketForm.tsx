@@ -78,7 +78,7 @@ function FinalPick({
 
 const count = (o: Picks) => Object.values(o).filter(Boolean).length;
 
-export function BracketForm({ config, teams, price }: { config: BracketConfig; teams: TeamInfo[]; price: number }) {
+export function BracketForm({ config, teams }: { config: BracketConfig; teams: TeamInfo[] }) {
   const router = useRouter();
   const teamMap: TeamMap = new Map(teams.map((t) => [t.code, t]));
 
@@ -175,7 +175,7 @@ export function BracketForm({ config, teams, price }: { config: BracketConfig; t
         disabled={loading || !complete}
         className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-semibold rounded-xl py-3.5 text-sm transition-all active:scale-[0.98] disabled:opacity-40 shadow-[0_10px_28px_-10px_rgba(245,177,60,0.8)]"
       >
-        {loading ? "Enviando..." : complete ? (price > 0 ? `Confirmar bracket · $${price}` : "Confirmar bracket") : `Faltan ${total - done} selecciones`}
+        {loading ? "Enviando..." : complete ? "Confirmar bracket" : `Faltan ${total - done} selecciones`}
       </button>
     </div>
   );

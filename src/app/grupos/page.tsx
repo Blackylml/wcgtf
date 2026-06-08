@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle, StatPill } from "@/components/PageTitle";
+import { ModuleEntryGate } from "@/components/ModuleEntryGate";
+import { getModuleAccess } from "@/lib/module-access";
+import { MODULE_META } from "@/lib/modules";
 import { LayoutGrid } from "lucide-react";
 import { GroupCard } from "./GroupCard";
 
@@ -10,21 +13,17 @@ export default async function GruposPage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const [groups, allTeams] = await Promise.all([
+  const [groups, allTeams, access] = await Promise.all([
     prisma.groupPool.findMany({
       orderBy: { name: "asc" },
-      include: {
-        bets: {
-          where: { userId },
-          select: { teamId: true, position: true, payment: { select: { status: true } } },
-        },
-      },
+      include: { bets: { where: { userId }, select: { teamId: true, position: true } } },
     }),
     prisma.team.findMany({
       where: { group: { not: null } },
       select: { id: true, name: true, code: true, flag: true, group: true },
       orderBy: { name: "asc" },
     }),
+    getModuleAccess(userId, "GROUPS"),
   ]);
 
   const openCount = groups.filter((g) => g.isOpen).length;
@@ -43,6 +42,15 @@ export default async function GruposPage() {
           right={<StatPill>{betCount}/{groups.length}</StatPill>}
         />
 
+        <ModuleEntryGate
+          module="GROUPS"
+          label={MODULE_META.GROUPS.label}
+          accent={MODULE_META.GROUPS.accent}
+          price={access.price}
+          paymentStatus={access.paymentStatus}
+          entryOpen={access.entryOpen}
+        />
+
         {openCount > 0 && (
           <div className="animate-rise mb-4 flex items-center gap-2 rounded-xl bg-green-400/[0.08] border border-green-400/20 px-3.5 py-2.5 text-xs font-medium text-green-300">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -56,11 +64,10 @@ export default async function GruposPage() {
               <GroupCard
                 groupPoolId={g.id}
                 groupName={g.name}
-                price={Number(g.price)}
                 isOpen={g.isOpen}
+                enabled={access.entered}
                 teams={allTeams.filter((t) => t.group === g.name)}
                 existingBets={g.bets.map((b) => ({ teamId: b.teamId, position: b.position }))}
-                paymentStatus={g.bets[0]?.payment?.status ?? null}
               />
             </div>
           ))}

@@ -3,9 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle } from "@/components/PageTitle";
+import { ModuleEntryGate } from "@/components/ModuleEntryGate";
+import { getModuleAccess } from "@/lib/module-access";
+import { MODULE_META } from "@/lib/modules";
 import { BracketForm } from "./BracketForm";
-import { BracketBetStatus } from "./BracketBetStatus";
-import { Trophy } from "lucide-react";
+import { BracketCancel } from "./BracketBetStatus";
+import { Trophy, Lock } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
   R32: "R32", R16: "R16", QF: "Cuartos", SF: "Semis", THIRD: "3er lugar", FINAL: "Final",
@@ -26,12 +29,25 @@ export default async function BracketPage() {
   const userId = session!.user.id;
 
   const bracketSession = await prisma.bracketSession.findFirst();
-  const userBet = bracketSession
-    ? await prisma.bracketBet.findUnique({
-        where: { userId_bracketSessionId: { userId, bracketSessionId: bracketSession.id } },
-        include: { payment: { select: { status: true } } },
-      })
-    : null;
+  const [userBet, access] = await Promise.all([
+    bracketSession
+      ? prisma.bracketBet.findUnique({
+          where: { userId_bracketSessionId: { userId, bracketSessionId: bracketSession.id } },
+        })
+      : Promise.resolve(null),
+    getModuleAccess(userId, "BRACKET"),
+  ]);
+
+  const gate = (
+    <ModuleEntryGate
+      module="BRACKET"
+      label={MODULE_META.BRACKET.label}
+      accent={MODULE_META.BRACKET.accent}
+      price={access.price}
+      paymentStatus={access.paymentStatus}
+      entryOpen={access.entryOpen}
+    />
+  );
 
   if (!bracketSession?.isOpen && !userBet) {
     return (
@@ -53,10 +69,6 @@ export default async function BracketPage() {
     const predictions = userBet.predictions as Record<string, Record<string, string> | string>;
     const teams = await prisma.team.findMany({ select: { code: true, name: true, flag: true } });
     const teamMap = new Map(teams.map((t) => [t.code, t]));
-    const price = Number(bracketSession!.price);
-    const paymentStatus = userBet.payment?.status ?? null;
-    const championCode = typeof predictions.FINAL === "string" ? predictions.FINAL : "";
-    const championLabel = `${teamMap.get(championCode)?.flag ?? ""} ${teamMap.get(championCode)?.name ?? championCode}`.trim() || "—";
 
     return (
       <Shell>
@@ -72,12 +84,7 @@ export default async function BracketPage() {
           }
         />
 
-        <BracketBetStatus
-          price={price}
-          paymentStatus={paymentStatus}
-          championLabel={championLabel}
-          isOpen={bracketSession!.isOpen}
-        />
+        {gate}
 
         <div className="space-y-3">
           {(["R32", "R16", "QF", "SF"] as const).map((stage) => {
@@ -119,6 +126,8 @@ export default async function BracketPage() {
               </div>
             )}
           </div>
+
+          {bracketSession?.isOpen && <BracketCancel />}
         </div>
       </Shell>
     );
@@ -147,11 +156,17 @@ export default async function BracketPage() {
         icon={Trophy}
         accent="amber"
         title="Bracket"
-        subtitle={`Elige el ganador de cada partido en cascada hasta el campeón.${
-          Number(bracketSession!.price) > 0 ? ` · $${Number(bracketSession!.price)} MXN` : ""
-        }`}
+        subtitle="Elige el ganador de cada partido en cascada hasta el campeón."
       />
-      <BracketForm config={config} teams={teams} price={Number(bracketSession!.price)} />
+      {gate}
+      {access.entered ? (
+        <BracketForm config={config} teams={teams} />
+      ) : (
+        <div className="animate-rise rounded-2xl border border-white/[0.08] bg-white/[0.025] p-6 text-center">
+          <Lock size={22} className="mx-auto text-slate-500 mb-2" />
+          <p className="text-sm text-slate-400">Paga la entrada para llenar tu bracket.</p>
+        </div>
+      )}
     </Shell>
   );
 }
