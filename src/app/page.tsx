@@ -98,16 +98,21 @@ export default async function HomePage() {
   });
 
   // User quick stats
-  const [matchBetsCorrect, groupBetsCorrect, specialBetsCorrect, bracketBet] = await Promise.all([
-    prisma.matchBet.count({ where: { userId, isCorrect: true } }),
+  const [matchBetsCorrect, groupBetsCorrect, specialBetsCorrect, bracketBet, validModules] = await Promise.all([
+    prisma.matchBet.findMany({ where: { userId, isCorrect: true }, select: { paymentId: true, payment: { select: { status: true } } } }),
     prisma.groupBet.count({ where: { userId, isCorrect: true } }),
     prisma.specialBet.count({ where: { userId, isCorrect: true } }),
     prisma.bracketBet.findFirst({ where: { userId }, select: { score: true } }),
+    getApprovedModules(userId),
   ]);
 
-  const validModules = await getApprovedModules(userId);
+  // Partidos: individuales cuentan por su propio pago; los demás por la entrada del módulo.
+  const matchPts = matchBetsCorrect.filter((b) =>
+    b.paymentId ? b.payment?.status === "APPROVED" : validModules.has("MATCHES")
+  ).length;
+
   const totalPts =
-    (validModules.has("MATCHES") ? matchBetsCorrect : 0) +
+    matchPts +
     (validModules.has("GROUPS") ? groupBetsCorrect : 0) +
     (validModules.has("SPECIALS") ? specialBetsCorrect : 0) +
     (validModules.has("BRACKET") ? (bracketBet?.score ?? 0) : 0);

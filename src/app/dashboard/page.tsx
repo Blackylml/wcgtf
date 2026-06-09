@@ -45,7 +45,7 @@ export default async function DashboardPage() {
       select: {
         id: true, name: true, email: true,
         payments: { where: { module: { not: null }, status: "APPROVED" }, select: { module: true } },
-        matchBets: { where: { isCorrect: true }, select: { id: true } },
+        matchBets: { where: { isCorrect: true }, select: { paymentId: true, payment: { select: { status: true } } } },
         groupBets: { where: { isCorrect: true }, select: { id: true } },
         specialBets: { where: { isCorrect: true }, select: { id: true } },
         bracketBets: { select: { score: true } },
@@ -65,7 +65,10 @@ export default async function DashboardPage() {
         id: u.id,
         name: u.name ?? u.email ?? "—",
         groupScore: valid(paid, "GROUPS") ? u.groupBets.length : 0,
-        matchScore: valid(paid, "MATCHES") ? u.matchBets.length : 0,
+        // Partidos: individuales cuentan por su propio pago; los demás por la entrada del módulo.
+        matchScore: u.matchBets.filter((b) =>
+          b.paymentId ? b.payment?.status === "APPROVED" : valid(paid, "MATCHES")
+        ).length,
         specialScore: valid(paid, "SPECIALS") ? u.specialBets.length : 0,
         bracketScore: valid(paid, "BRACKET") ? u.bracketBets.reduce((s, b) => s + b.score, 0) : 0,
       };

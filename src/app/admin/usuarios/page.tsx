@@ -14,7 +14,7 @@ export default async function UsuariosAdminPage() {
       select: {
         id: true, name: true, email: true, role: true, createdAt: true,
         groupBets: { select: { isCorrect: true, groupPoolId: true } },
-        matchBets: { select: { isCorrect: true } },
+        matchBets: { select: { isCorrect: true, paymentId: true, payment: { select: { status: true } } } },
         specialBets: { select: { isCorrect: true } },
         bracketBets: { select: { score: true } },
         payments: { select: { amount: true, status: true, module: true } },
@@ -33,7 +33,7 @@ export default async function UsuariosAdminPage() {
     const valid = (m: string) => !pricedModules.has(m) || approvedModules.has(m);
 
     const points =
-      (valid("MATCHES") ? u.matchBets.filter((b) => b.isCorrect === true).length : 0) +
+      u.matchBets.filter((b) => b.isCorrect === true && (b.paymentId ? b.payment?.status === "APPROVED" : valid("MATCHES"))).length +
       (valid("GROUPS") ? u.groupBets.filter((b) => b.isCorrect === true).length : 0) +
       (valid("SPECIALS") ? u.specialBets.filter((b) => b.isCorrect === true).length : 0) +
       (valid("BRACKET") ? u.bracketBets.reduce((s, b) => s + b.score, 0) : 0);
