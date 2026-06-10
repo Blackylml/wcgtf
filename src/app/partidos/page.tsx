@@ -7,6 +7,7 @@ import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import { getModuleAccess } from "@/lib/module-access";
 import { MODULE_META, GROUP_MATCH_QUINIELAS, matchModule } from "@/lib/modules";
 import { MatchCard } from "./MatchCard";
+import { QuinielaSection } from "./QuinielaSection";
 import { Stage, Module } from "@/generated/prisma/client";
 import { CalendarDays } from "lucide-react";
 import Link from "next/link";
@@ -131,25 +132,27 @@ export default async function PartidosPage({
               const qMatches = filtered.filter((m) => m.matchNumber >= q.min && m.matchNumber <= q.max);
               if (qMatches.length === 0) return null;
               const access = accessByModule[q.module];
-              const betted = qMatches.filter((m) => m.bets.length > 0).length;
               return (
-                <section key={q.module} className="mb-7">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="font-display text-base font-bold text-white">{q.label} <span className="text-xs font-normal text-slate-500">· partidos {q.min}–{q.max}</span></h2>
-                    <StatPill>{betted}/{qMatches.length}</StatPill>
-                  </div>
-                  <ModuleEntryGate
-                    module={q.module as Module}
-                    label={MODULE_META[q.module as Module].label}
-                    accent={MODULE_META[q.module as Module].accent}
-                    price={access.price}
-                    paymentStatus={access.paymentStatus}
-                    entryOpen={access.entryOpen}
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {qMatches.map((m, i) => renderCard(m, i))}
-                  </div>
-                </section>
+                <QuinielaSection
+                  key={q.module}
+                  module={q.module as Module}
+                  label={q.label}
+                  accent={MODULE_META[q.module as Module].accent}
+                  range={{ min: q.min, max: q.max }}
+                  access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
+                  matches={qMatches.map((m) => ({
+                    id: m.id,
+                    matchNumber: m.matchNumber,
+                    homeName: m.homeTeam?.name ?? m.homeLabel ?? "Por definir",
+                    homeFlag: m.homeTeam?.flag ?? null,
+                    homeCode: m.homeTeam?.code ?? null,
+                    awayName: m.awayTeam?.name ?? m.awayLabel ?? "Por definir",
+                    awayFlag: m.awayTeam?.flag ?? null,
+                    awayCode: m.awayTeam?.code ?? null,
+                    isOpen: m.isOpen,
+                    userBet: m.bets[0]?.pick ?? null,
+                  }))}
+                />
               );
             })
           ) : (

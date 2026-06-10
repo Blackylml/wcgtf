@@ -2,10 +2,44 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { MatchPick } from "@/generated/prisma/client";
+import { MatchPick, Module } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { getModuleAccess } from "@/lib/module-access";
 import { matchModule } from "@/lib/modules";
+
+/**
+ * Guarda toda la quiniela de una jornada de un jalón (upsert de cada pronóstico).
+ * Solo afecta partidos abiertos que pertenecen a la quiniela indicada.
+ */
+export async function saveQuinielaBets(module: Module, picks: { matchId: string; pick: MatchPick }[]) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autenticado" };
+  const userId = session.user.id;
+
+  const access = await getModuleAccess(userId, module);
+  if (!access.entered) return { error: "Primero paga la entrada de esta quiniela" };
+
+  const matches = await prisma.match.findMany({
+    where: { id: { in: picks.map((p) => p.matchId) } },
+    select: { id: true, isOpen: true, stage: true, matchNumber: true, penaltiesAllowed: true },
+  });
+  const byId = new Map(matches.map((m) => [m.id, m]));
+
+  for (const { matchId, pick } of picks) {
+    const m = byId.get(matchId);
+    if (!m || !m.isOpen) continue;
+    if (matchModule(m.stage, m.matchNumber) !== module) continue;
+    if (pick === "DRAW" && m.stage !== "GROUP" && !m.penaltiesAllowed) continue;
+    await prisma.matchBet.upsert({
+      where: { userId_matchId: { userId, matchId } },
+      create: { userId, matchId, pick },
+      update: { pick },
+    });
+  }
+
+  revalidatePath("/partidos");
+  return { success: true };
+}
 
 /**
  * Crea la apuesta del partido.
