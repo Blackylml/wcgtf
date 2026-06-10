@@ -42,12 +42,6 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
   );
 }
 
-const SEG: { pick: MatchPick; label: string }[] = [
-  { pick: "HOME", label: "L" },
-  { pick: "DRAW", label: "E" },
-  { pick: "AWAY", label: "V" },
-];
-
 export function QuinielaSection({
   module, label, accent, matches, access, locked, lockLabel,
 }: {
@@ -139,38 +133,45 @@ export function QuinielaSection({
         {matches.map((m) => {
           const sel = picks[m.id];
           return (
-            <div key={m.id} className="flex items-center gap-2 px-2.5 py-2 border-b border-white/[0.05] last:border-0">
-              <span className="font-mono text-[10px] text-slate-600 w-5 shrink-0">{m.matchNumber}</span>
+            <div key={m.id} className="flex items-center gap-1.5 px-2 py-1.5 border-b border-white/[0.05] last:border-0">
+              <span className="font-mono text-[10px] text-slate-600 w-4 shrink-0">{m.matchNumber}</span>
 
-              <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
-                <span className="text-[11px] text-slate-200 truncate text-right">{m.homeName}</span>
-                <FlagCircle flag={m.homeFlag} code={m.homeCode} size={18} />
-              </div>
+              {/* Local gana */}
+              <button
+                type="button"
+                onClick={() => choose(m.id, "HOME")}
+                className={`flex items-center justify-end gap-1.5 flex-1 min-w-0 px-2 py-1.5 rounded-lg border transition-all active:scale-[0.98] ${
+                  sel === "HOME" ? "bg-blue-500/15 border-blue-400/50" : "border-transparent hover:bg-white/[0.04]"
+                }`}
+              >
+                <span className={`text-[11px] truncate text-right ${sel === "HOME" ? "text-white font-semibold" : "text-slate-300"}`}>{m.homeName}</span>
+                <FlagCircle flag={m.homeFlag} code={m.homeCode} size={22} ring={sel === "HOME" ? "ring-blue-400/70" : "ring-white/12"} />
+              </button>
 
-              <div className="flex gap-1 shrink-0">
-                {SEG.map(({ pick, label: l }) => {
-                  const active = sel === pick;
-                  return (
-                    <button
-                      key={pick}
-                      type="button"
-                      onClick={() => choose(m.id, pick)}
-                      className={`w-7 h-7 rounded-md text-[11px] font-bold transition-all ${
-                        active
-                          ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-[0_4px_12px_-4px_rgba(59,157,255,0.9)]"
-                          : "bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08] active:scale-90"
-                      }`}
-                    >
-                      {l}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Empate */}
+              <button
+                type="button"
+                onClick={() => choose(m.id, "DRAW")}
+                className={`w-9 h-9 shrink-0 rounded-lg text-[11px] font-bold transition-all active:scale-90 ${
+                  sel === "DRAW"
+                    ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-[0_4px_12px_-4px_rgba(59,157,255,0.9)]"
+                    : "bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08]"
+                }`}
+              >
+                E
+              </button>
 
-              <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                <FlagCircle flag={m.awayFlag} code={m.awayCode} size={18} />
-                <span className="text-[11px] text-slate-200 truncate">{m.awayName}</span>
-              </div>
+              {/* Visitante gana */}
+              <button
+                type="button"
+                onClick={() => choose(m.id, "AWAY")}
+                className={`flex items-center justify-start gap-1.5 flex-1 min-w-0 px-2 py-1.5 rounded-lg border transition-all active:scale-[0.98] ${
+                  sel === "AWAY" ? "bg-blue-500/15 border-blue-400/50" : "border-transparent hover:bg-white/[0.04]"
+                }`}
+              >
+                <FlagCircle flag={m.awayFlag} code={m.awayCode} size={22} ring={sel === "AWAY" ? "ring-blue-400/70" : "ring-white/12"} />
+                <span className={`text-[11px] truncate ${sel === "AWAY" ? "text-white font-semibold" : "text-slate-300"}`}>{m.awayName}</span>
+              </button>
             </div>
           );
         })}
