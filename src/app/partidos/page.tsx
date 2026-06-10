@@ -157,7 +157,6 @@ export default async function PartidosPage({
                     awayName: m.awayTeam?.name ?? m.awayLabel ?? "Por definir",
                     awayFlag: m.awayTeam?.flag ?? null,
                     awayCode: m.awayTeam?.code ?? null,
-                    isOpen: m.isOpen,
                     userBet: m.bets[0]?.pick ?? null,
                   }))}
                 />

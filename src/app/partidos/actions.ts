@@ -22,13 +22,14 @@ export async function saveQuinielaBets(module: Module, picks: { matchId: string;
 
   const matches = await prisma.match.findMany({
     where: { id: { in: picks.map((p) => p.matchId) } },
-    select: { id: true, isOpen: true, stage: true, matchNumber: true, penaltiesAllowed: true },
+    select: { id: true, stage: true, matchNumber: true, penaltiesAllowed: true },
   });
   const byId = new Map(matches.map((m) => [m.id, m]));
 
   for (const { matchId, pick } of picks) {
     const m = byId.get(matchId);
-    if (!m || !m.isOpen) continue;
+    // El isOpen individual ya no gobierna la quiniela; el cierre por tiempo (arriba) sí.
+    if (!m) continue;
     if (matchModule(m.stage, m.matchNumber) !== module) continue;
     if (pick === "DRAW" && m.stage !== "GROUP" && !m.penaltiesAllowed) continue;
     await prisma.matchBet.upsert({

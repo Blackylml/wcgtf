@@ -14,7 +14,6 @@ export type QMatch = {
   matchNumber: number;
   homeName: string; homeFlag: string | null; homeCode: string | null;
   awayName: string; awayFlag: string | null; awayCode: string | null;
-  isOpen: boolean;
   userBet: MatchPick | null;
 };
 
@@ -71,11 +70,12 @@ export function QuinielaSection({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const openMatches = matches.filter((m) => m.isOpen);
+  // En quiniela, todos los partidos de la jornada se eligen mientras no esté cerrada
+  // (el cierre por tiempo gobierna, no el isOpen individual de cada partido).
   const done = matches.filter((m) => picks[m.id]).length;
-  const allPicked = openMatches.length > 0 && openMatches.every((m) => picks[m.id]);
-  const changed = openMatches.some((m) => picks[m.id] && picks[m.id] !== saved[m.id]);
-  const missing = openMatches.filter((m) => !picks[m.id]).length;
+  const allPicked = matches.length > 0 && matches.every((m) => picks[m.id]);
+  const changed = matches.some((m) => picks[m.id] && picks[m.id] !== saved[m.id]);
+  const missing = matches.filter((m) => !picks[m.id]).length;
 
   const interactable = access.entered && !locked;
 
@@ -87,7 +87,7 @@ export function QuinielaSection({
 
   async function confirm() {
     setLoading(true); setError("");
-    const payload = openMatches.filter((m) => picks[m.id]).map((m) => ({ matchId: m.id, pick: picks[m.id] }));
+    const payload = matches.filter((m) => picks[m.id]).map((m) => ({ matchId: m.id, pick: picks[m.id] }));
     const res = await saveQuinielaBets(module, payload);
     setLoading(false);
     if (res?.error) { setError(res.error); return; }
@@ -138,7 +138,6 @@ export function QuinielaSection({
       <div className={`rounded-xl border border-white/[0.06] overflow-hidden ${!interactable ? "opacity-50 pointer-events-none select-none" : ""}`}>
         {matches.map((m) => {
           const sel = picks[m.id];
-          const closed = !m.isOpen;
           return (
             <div key={m.id} className="flex items-center gap-2 px-2.5 py-2 border-b border-white/[0.05] last:border-0">
               <span className="font-mono text-[10px] text-slate-600 w-5 shrink-0">{m.matchNumber}</span>
@@ -155,14 +154,11 @@ export function QuinielaSection({
                     <button
                       key={pick}
                       type="button"
-                      disabled={closed}
                       onClick={() => choose(m.id, pick)}
                       className={`w-7 h-7 rounded-md text-[11px] font-bold transition-all ${
                         active
                           ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-[0_4px_12px_-4px_rgba(59,157,255,0.9)]"
-                          : closed
-                            ? "bg-white/[0.02] text-slate-700"
-                            : "bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08] active:scale-90"
+                          : "bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08] active:scale-90"
                       }`}
                     >
                       {l}
@@ -175,8 +171,6 @@ export function QuinielaSection({
                 <FlagCircle flag={m.awayFlag} code={m.awayCode} size={18} />
                 <span className="text-[11px] text-slate-200 truncate">{m.awayName}</span>
               </div>
-
-              {closed && <Lock size={11} className="text-slate-600 shrink-0" />}
             </div>
           );
         })}
