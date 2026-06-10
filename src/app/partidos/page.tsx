@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle, StatPill } from "@/components/PageTitle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
-import { getModuleAccess } from "@/lib/module-access";
+import { getModuleAccess, isLocked } from "@/lib/module-access";
 import { MODULE_META, GROUP_MATCH_QUINIELAS, matchModule } from "@/lib/modules";
 import { MatchCard } from "./MatchCard";
 import { QuinielaSection } from "./QuinielaSection";
@@ -132,13 +132,21 @@ export default async function PartidosPage({
               const qMatches = filtered.filter((m) => m.matchNumber >= q.min && m.matchNumber <= q.max);
               if (qMatches.length === 0) return null;
               const access = accessByModule[q.module];
+              const lockMs = Math.min(...qMatches.map((m) => m.scheduledAt.getTime()));
+              const lockDate = new Date(lockMs);
+              const locked = isLocked(lockDate);
+              const lockLabel = lockDate.toLocaleString("es-MX", {
+                weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                hour12: false, timeZone: "America/Monterrey",
+              });
               return (
                 <QuinielaSection
                   key={q.module}
                   module={q.module as Module}
                   label={q.label}
                   accent={MODULE_META[q.module as Module].accent}
-                  range={{ min: q.min, max: q.max }}
+                  locked={locked}
+                  lockLabel={lockLabel}
                   access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
                   matches={qMatches.map((m) => ({
                     id: m.id,

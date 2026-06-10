@@ -7,7 +7,7 @@ import { saveQuinielaBets } from "./actions";
 import { FlagCircle } from "@/components/FlagCircle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import type { ModuleAccent } from "@/lib/modules";
-import { Check, Lock } from "lucide-react";
+import { Check, Lock, Clock } from "lucide-react";
 
 export type QMatch = {
   id: string;
@@ -50,14 +50,15 @@ const SEG: { pick: MatchPick; label: string }[] = [
 ];
 
 export function QuinielaSection({
-  module, label, accent, range, matches, access,
+  module, label, accent, matches, access, locked, lockLabel,
 }: {
   module: Module;
   label: string;
   accent: ModuleAccent;
-  range: { min: number; max: number };
   matches: QMatch[];
   access: Access;
+  locked: boolean;
+  lockLabel: string;
 }) {
   const router = useRouter();
   const init = () => {
@@ -76,8 +77,10 @@ export function QuinielaSection({
   const changed = openMatches.some((m) => picks[m.id] && picks[m.id] !== saved[m.id]);
   const missing = openMatches.filter((m) => !picks[m.id]).length;
 
+  const interactable = access.entered && !locked;
+
   function choose(id: string, pick: MatchPick) {
-    if (!access.entered) return;
+    if (!interactable) return;
     setError("");
     setPicks((p) => ({ ...p, [id]: pick }));
   }
@@ -101,9 +104,17 @@ export function QuinielaSection({
         <ProgressRing done={done} total={matches.length} />
         <div className="min-w-0 flex-1">
           <h2 className="font-display font-bold text-white leading-tight">{label}</h2>
-          <p className="text-[11px] text-slate-500 tabular-nums">{done}/{matches.length} · partidos {range.min}–{range.max}</p>
+          <p className="text-[11px] text-slate-500 flex items-center gap-1.5 tabular-nums">
+            <span>{done}/{matches.length}</span>
+            <span className="text-slate-700">·</span>
+            {locked ? (
+              <span className="inline-flex items-center gap-1 text-red-300/90 font-medium"><Lock size={10} /> Cerrada</span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-slate-500"><Clock size={10} /> cierra {lockLabel}</span>
+            )}
+          </p>
         </div>
-        {access.price > 0 && !access.entered && (
+        {access.price > 0 && !access.entered && !locked && (
           <span className="text-amber-300 text-sm font-bold tabular-nums shrink-0">${access.price}</span>
         )}
         {fullyConfirmed && access.entered && (
@@ -120,14 +131,14 @@ export function QuinielaSection({
         accent={accent}
         price={access.price}
         paymentStatus={access.paymentStatus}
-        entryOpen={access.entryOpen}
+        entryOpen={access.entryOpen && !locked}
       />
 
       {/* Match rows */}
-      <div className={`rounded-xl border border-white/[0.06] overflow-hidden ${!access.entered ? "opacity-50 pointer-events-none select-none" : ""}`}>
+      <div className={`rounded-xl border border-white/[0.06] overflow-hidden ${!interactable ? "opacity-50 pointer-events-none select-none" : ""}`}>
         {matches.map((m) => {
           const sel = picks[m.id];
-          const locked = !m.isOpen;
+          const closed = !m.isOpen;
           return (
             <div key={m.id} className="flex items-center gap-2 px-2.5 py-2 border-b border-white/[0.05] last:border-0">
               <span className="font-mono text-[10px] text-slate-600 w-5 shrink-0">{m.matchNumber}</span>
@@ -144,12 +155,12 @@ export function QuinielaSection({
                     <button
                       key={pick}
                       type="button"
-                      disabled={locked}
+                      disabled={closed}
                       onClick={() => choose(m.id, pick)}
                       className={`w-7 h-7 rounded-md text-[11px] font-bold transition-all ${
                         active
                           ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-[0_4px_12px_-4px_rgba(59,157,255,0.9)]"
-                          : locked
+                          : closed
                             ? "bg-white/[0.02] text-slate-700"
                             : "bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08] active:scale-90"
                       }`}
@@ -165,7 +176,7 @@ export function QuinielaSection({
                 <span className="text-[11px] text-slate-200 truncate">{m.awayName}</span>
               </div>
 
-              {locked && <Lock size={11} className="text-slate-600 shrink-0" />}
+              {closed && <Lock size={11} className="text-slate-600 shrink-0" />}
             </div>
           );
         })}
@@ -174,7 +185,7 @@ export function QuinielaSection({
       {error && <p className="text-red-400 text-xs mt-2 text-center">{error}</p>}
 
       {/* Confirm */}
-      {access.entered && (
+      {access.entered && !locked && (
         <button
           onClick={confirm}
           disabled={loading || !allPicked || fullyConfirmed}

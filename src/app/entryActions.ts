@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import type { Module } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { MODULE_META } from "@/lib/modules";
+import { moduleLockAt, isLocked } from "@/lib/module-access";
 
 /** Crea la ENTRADA al módulo (un Payment con `module`) en estado PENDING. */
 export async function createModuleEntry(module: Module) {
@@ -16,6 +17,7 @@ export async function createModuleEntry(module: Module) {
   const price = Number(settings?.price ?? 0);
   if (price <= 0) return { error: "Este módulo es gratis" };
   if (settings && !settings.entryOpen) return { error: "La entrada a este módulo está cerrada" };
+  if (isLocked(await moduleLockAt(module))) return { error: "La quiniela ya cerró (empezó el primer partido)" };
 
   const existing = await prisma.payment.findFirst({
     where: { userId, module, status: { in: ["PENDING", "APPROVED"] } },

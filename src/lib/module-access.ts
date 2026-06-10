@@ -1,6 +1,36 @@
 import { prisma } from "@/lib/prisma";
 import type { Module } from "@/generated/prisma/client";
-import { ALL_MODULES } from "@/lib/modules";
+import { ALL_MODULES, GROUP_MATCH_QUINIELAS } from "@/lib/modules";
+
+/**
+ * Momento en que la quiniela se cierra = arranque de su primer partido.
+ * Solo aplica a quinielas basadas en partidos (jornadas de grupos y eliminatorias).
+ * Devuelve null si el módulo no tiene partidos asociados (no se autocierra).
+ */
+export async function moduleLockAt(module: Module): Promise<Date | null> {
+  const q = GROUP_MATCH_QUINIELAS.find((x) => x.module === module);
+  if (q) {
+    const first = await prisma.match.findFirst({
+      where: { stage: "GROUP", matchNumber: { gte: q.min, lte: q.max } },
+      orderBy: { scheduledAt: "asc" },
+      select: { scheduledAt: true },
+    });
+    return first?.scheduledAt ?? null;
+  }
+  if (module === "MATCHES") {
+    const first = await prisma.match.findFirst({
+      where: { stage: { not: "GROUP" } },
+      orderBy: { scheduledAt: "asc" },
+      select: { scheduledAt: true },
+    });
+    return first?.scheduledAt ?? null;
+  }
+  return null;
+}
+
+export function isLocked(lockAt: Date | null): boolean {
+  return lockAt != null && Date.now() >= lockAt.getTime();
+}
 
 export type ModuleAccess = {
   price: number;

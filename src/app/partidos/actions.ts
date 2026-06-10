@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { MatchPick, Module } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
-import { getModuleAccess } from "@/lib/module-access";
+import { getModuleAccess, moduleLockAt, isLocked } from "@/lib/module-access";
 import { matchModule } from "@/lib/modules";
 
 /**
@@ -18,6 +18,7 @@ export async function saveQuinielaBets(module: Module, picks: { matchId: string;
 
   const access = await getModuleAccess(userId, module);
   if (!access.entered) return { error: "Primero paga la entrada de esta quiniela" };
+  if (isLocked(await moduleLockAt(module))) return { error: "La quiniela ya cerró (empezó el primer partido)" };
 
   const matches = await prisma.match.findMany({
     where: { id: { in: picks.map((p) => p.matchId) } },
