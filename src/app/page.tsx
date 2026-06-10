@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Countdown } from "@/components/Countdown";
 import { FlagCircle } from "@/components/FlagCircle";
 import { getApprovedModules } from "@/lib/module-access";
+import { matchModule } from "@/lib/modules";
 import Link from "next/link";
 import {
   LayoutGrid, CalendarDays, Trophy, Star, ArrowRight, BarChart3,
@@ -99,16 +100,16 @@ export default async function HomePage() {
 
   // User quick stats
   const [matchBetsCorrect, groupBetsCorrect, specialBetsCorrect, bracketBet, validModules] = await Promise.all([
-    prisma.matchBet.findMany({ where: { userId, isCorrect: true }, select: { paymentId: true, payment: { select: { status: true } } } }),
+    prisma.matchBet.findMany({ where: { userId, isCorrect: true }, select: { paymentId: true, payment: { select: { status: true } }, match: { select: { stage: true, matchNumber: true } } } }),
     prisma.groupBet.count({ where: { userId, isCorrect: true } }),
     prisma.specialBet.count({ where: { userId, isCorrect: true } }),
     prisma.bracketBet.findFirst({ where: { userId }, select: { score: true } }),
     getApprovedModules(userId),
   ]);
 
-  // Partidos: individuales cuentan por su propio pago; los demás por la entrada del módulo.
+  // Partidos: individuales cuentan por su propio pago; los demás por la entrada de su quiniela.
   const matchPts = matchBetsCorrect.filter((b) =>
-    b.paymentId ? b.payment?.status === "APPROVED" : validModules.has("MATCHES")
+    b.paymentId ? b.payment?.status === "APPROVED" : validModules.has(matchModule(b.match.stage, b.match.matchNumber))
   ).length;
 
   const totalPts =

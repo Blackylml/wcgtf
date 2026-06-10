@@ -283,6 +283,9 @@ enum PaymentStatus {
 enum Module {
   GROUPS
   MATCHES
+  MATCHES_G1
+  MATCHES_G2
+  MATCHES_G3
   BRACKET
   SPECIALS
 }

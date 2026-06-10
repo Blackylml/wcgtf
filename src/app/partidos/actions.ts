@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { MatchPick } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { getModuleAccess } from "@/lib/module-access";
+import { matchModule } from "@/lib/modules";
 
 /**
  * Crea la apuesta del partido.
@@ -34,9 +35,10 @@ export async function createMatchBet(matchId: string, pick: MatchPick) {
     return { individual: true, price };
   }
 
-  // Cubierto por la entrada del módulo.
-  const access = await getModuleAccess(userId, "MATCHES");
-  if (!access.entered) return { error: "Primero entra a Partidos" };
+  // Cubierto por la entrada de su quiniela (jornada de grupos o eliminatorias).
+  const mod = matchModule(match.stage, match.matchNumber);
+  const access = await getModuleAccess(userId, mod);
+  if (!access.entered) return { error: "Primero paga la entrada de esta quiniela" };
   await prisma.matchBet.create({ data: { userId, matchId, pick } });
   revalidatePath("/partidos");
   return { individual: false };

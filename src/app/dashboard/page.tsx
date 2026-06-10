@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { redirect } from "next/navigation";
 import { SpecialCategory } from "@/generated/prisma/client";
 import { Check, X, Clock, Crown } from "lucide-react";
+import { matchModule } from "@/lib/modules";
 import { StandingsTable } from "./StandingsTable";
 
 const SPECIAL_LABELS: Record<SpecialCategory, string> = {
@@ -45,7 +46,7 @@ export default async function DashboardPage() {
       select: {
         id: true, name: true, email: true,
         payments: { where: { module: { not: null }, status: "APPROVED" }, select: { module: true } },
-        matchBets: { where: { isCorrect: true }, select: { paymentId: true, payment: { select: { status: true } } } },
+        matchBets: { where: { isCorrect: true }, select: { paymentId: true, payment: { select: { status: true } }, match: { select: { stage: true, matchNumber: true } } } },
         groupBets: { where: { isCorrect: true }, select: { id: true } },
         specialBets: { where: { isCorrect: true }, select: { id: true } },
         bracketBets: { select: { score: true } },
@@ -61,19 +62,29 @@ export default async function DashboardPage() {
   const standings = allUsers
     .map((u) => {
       const paid = new Set(u.payments.map((p) => p.module).filter(Boolean) as string[]);
+      // Partidos: individuales cuentan por su propio pago; los demás por la entrada de su quiniela.
+      const mc: Record<string, number> = { MATCHES_G1: 0, MATCHES_G2: 0, MATCHES_G3: 0, MATCHES: 0 };
+      for (const b of u.matchBets) {
+        const mod = matchModule(b.match.stage, b.match.matchNumber);
+        const counts = b.paymentId ? b.payment?.status === "APPROVED" : valid(paid, mod);
+        if (counts) mc[mod]++;
+      }
       return {
         id: u.id,
         name: u.name ?? u.email ?? "—",
         groupScore: valid(paid, "GROUPS") ? u.groupBets.length : 0,
-        // Partidos: individuales cuentan por su propio pago; los demás por la entrada del módulo.
-        matchScore: u.matchBets.filter((b) =>
-          b.paymentId ? b.payment?.status === "APPROVED" : valid(paid, "MATCHES")
-        ).length,
+        g1Score: mc.MATCHES_G1,
+        g2Score: mc.MATCHES_G2,
+        g3Score: mc.MATCHES_G3,
+        knockoutScore: mc.MATCHES,
         specialScore: valid(paid, "SPECIALS") ? u.specialBets.length : 0,
         bracketScore: valid(paid, "BRACKET") ? u.bracketBets.reduce((s, b) => s + b.score, 0) : 0,
       };
     })
-    .map((u) => ({ ...u, total: u.matchScore + u.groupScore + u.specialScore + u.bracketScore }))
+    .map((u) => ({
+      ...u,
+      total: u.groupScore + u.g1Score + u.g2Score + u.g3Score + u.knockoutScore + u.specialScore + u.bracketScore,
+    }))
     .sort((a, b) => b.total - a.total);
 
   const myRank = standings.findIndex((u) => u.id === userId) + 1;
