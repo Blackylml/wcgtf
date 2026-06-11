@@ -4,6 +4,7 @@ import { PaymentStatus } from "@/generated/prisma/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DeletePaymentButton } from "./DeletePaymentButton";
 
 const MODULE_LABEL: Record<string, string> = {
   GROUPS: "Grupos", MATCHES: "Partidos", BRACKET: "Bracket", SPECIALS: "Especiales",
@@ -116,6 +117,7 @@ export default async function PagosAdminPage() {
                   </form>
                 </div>
               )}
+              <DeletePaymentButton id={p.id} label={p.user.name ?? p.user.email ?? "este usuario"} />
             </div>
           </div>
         ))}
