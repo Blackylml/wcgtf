@@ -7,7 +7,8 @@ import { saveQuinielaBets } from "./actions";
 import { FlagCircle } from "@/components/FlagCircle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import type { ModuleAccent } from "@/lib/modules";
-import { Check, Lock, Clock } from "lucide-react";
+import { Lock, Clock, Trophy } from "lucide-react";
+import type { QuinielaStanding } from "@/lib/module-access";
 
 export type QMatch = {
   id: string;
@@ -43,7 +44,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
 }
 
 export function QuinielaSection({
-  module, label, accent, matches, access, locked, lockLabel,
+  module, label, accent, matches, access, locked, lockLabel, standing,
 }: {
   module: Module;
   label: string;
@@ -52,6 +53,7 @@ export function QuinielaSection({
   access: Access;
   locked: boolean;
   lockLabel: string;
+  standing: QuinielaStanding | null;
 }) {
   const router = useRouter();
   const init = () => {
@@ -111,10 +113,14 @@ export function QuinielaSection({
         {access.price > 0 && !access.entered && !locked && (
           <span className="text-amber-300 text-sm font-bold tabular-nums shrink-0">${access.price}</span>
         )}
-        {fullyConfirmed && access.entered && (
-          <span className="flex items-center gap-1 text-green-300 text-[11px] font-semibold bg-green-400/10 border border-green-400/20 rounded-full px-2 py-1 shrink-0">
-            <Check size={11} /> Lista
-          </span>
+        {access.entered && standing && (
+          standing.ranked ? (
+            <span className="flex items-center gap-1 text-amber-200 text-[11px] font-semibold bg-amber-400/10 border border-amber-400/25 rounded-full px-2.5 py-1 shrink-0">
+              <Trophy size={11} /> #{standing.rank} <span className="text-amber-300/60 font-normal">de {standing.total}</span>
+            </span>
+          ) : (
+            <span className="text-[11px] text-slate-400 bg-white/[0.04] border border-white/10 rounded-full px-2.5 py-1 shrink-0">{standing.total} jugando</span>
+          )
         )}
       </div>
 

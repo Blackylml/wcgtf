@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle, StatPill } from "@/components/PageTitle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
-import { getModuleAccess, isLocked } from "@/lib/module-access";
+import { getModuleAccess, isLocked, getGroupQuinielaRanks } from "@/lib/module-access";
 import { MODULE_META, GROUP_MATCH_QUINIELAS, matchModule } from "@/lib/modules";
 import { MatchCard } from "./MatchCard";
 import { QuinielaSection } from "./QuinielaSection";
@@ -60,6 +60,7 @@ export default async function PartidosPage({
   const accessByModule: Record<string, typeof g1> = {
     MATCHES_G1: g1, MATCHES_G2: g2, MATCHES_G3: g3, MATCHES: mk,
   };
+  const ranks = isGroup ? await getGroupQuinielaRanks(userId) : {};
   const enabledFor = (m: MatchRow) => accessByModule[matchModule(m.stage, m.matchNumber)].entered;
 
   const renderCard = (m: MatchRow, i: number) => (
@@ -147,6 +148,7 @@ export default async function PartidosPage({
                   accent={MODULE_META[q.module as Module].accent}
                   locked={locked}
                   lockLabel={lockLabel}
+                  standing={ranks[q.module] ?? null}
                   access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
                   matches={qMatches.map((m) => ({
                     id: m.id,
