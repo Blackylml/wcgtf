@@ -14,16 +14,23 @@ export type Standing = {
   g3Score: number;
   specialScore: number;
   bracketScore: number;
+  hasAny: boolean;
+  hasGroup: boolean;
+  hasG1: boolean;
+  hasG2: boolean;
+  hasG3: boolean;
+  hasSpecial: boolean;
+  hasBracket: boolean;
 };
 
 const TABS = [
-  { key: "total", label: "General", metric: (r: Standing) => r.total },
-  { key: "group", label: "Grupos", metric: (r: Standing) => r.groupScore },
-  { key: "g1", label: "Jornada 1", metric: (r: Standing) => r.g1Score },
-  { key: "g2", label: "Jornada 2", metric: (r: Standing) => r.g2Score },
-  { key: "g3", label: "Jornada 3", metric: (r: Standing) => r.g3Score },
-  { key: "special", label: "Especiales", metric: (r: Standing) => r.specialScore },
-  { key: "bracket", label: "Bracket", metric: (r: Standing) => r.bracketScore },
+  { key: "total", label: "General", metric: (r: Standing) => r.total, has: (r: Standing) => r.hasAny },
+  { key: "group", label: "Grupos", metric: (r: Standing) => r.groupScore, has: (r: Standing) => r.hasGroup },
+  { key: "g1", label: "Jornada 1", metric: (r: Standing) => r.g1Score, has: (r: Standing) => r.hasG1 },
+  { key: "g2", label: "Jornada 2", metric: (r: Standing) => r.g2Score, has: (r: Standing) => r.hasG2 },
+  { key: "g3", label: "Jornada 3", metric: (r: Standing) => r.g3Score, has: (r: Standing) => r.hasG3 },
+  { key: "special", label: "Especiales", metric: (r: Standing) => r.specialScore, has: (r: Standing) => r.hasSpecial },
+  { key: "bracket", label: "Bracket", metric: (r: Standing) => r.bracketScore, has: (r: Standing) => r.hasBracket },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -71,7 +78,7 @@ export function StandingsTable({ standings, currentUserId }: { standings: Standi
   const active = TABS.find((t) => t.key === tab)!;
   const isTotal = tab === "total";
 
-  const sorted = [...standings].sort((a, b) => active.metric(b) - active.metric(a) || b.total - a.total);
+  const sorted = standings.filter(active.has).sort((a, b) => active.metric(b) - active.metric(a) || b.total - a.total);
   const podium = sorted.slice(0, 3);
 
   return (

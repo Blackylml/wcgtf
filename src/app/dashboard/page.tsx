@@ -46,9 +46,9 @@ export default async function DashboardPage() {
       select: {
         id: true, name: true, email: true, image: true,
         payments: { where: { module: { not: null }, status: "APPROVED" }, select: { module: true } },
-        matchBets: { where: { isCorrect: true }, select: { paymentId: true, payment: { select: { status: true } }, match: { select: { stage: true, matchNumber: true } } } },
-        groupBets: { where: { isCorrect: true }, select: { id: true } },
-        specialBets: { where: { isCorrect: true }, select: { id: true } },
+        matchBets: { select: { isCorrect: true, paymentId: true, payment: { select: { status: true } }, match: { select: { stage: true, matchNumber: true } } } },
+        groupBets: { select: { isCorrect: true } },
+        specialBets: { select: { isCorrect: true } },
         bracketBets: { select: { score: true } },
       },
     }),
@@ -62,24 +62,40 @@ export default async function DashboardPage() {
   const standings = allUsers
     .map((u) => {
       const paid = new Set(u.payments.map((p) => p.module).filter(Boolean) as string[]);
-      // Partidos: individuales cuentan por su propio pago; los demás por la entrada de su quiniela.
+      // Partidos: puntos (correctos, según pago) y participación (tiene apuesta) por quiniela.
       const mc: Record<string, number> = { MATCHES_G1: 0, MATCHES_G2: 0, MATCHES_G3: 0, MATCHES: 0 };
+      const mh: Record<string, boolean> = { MATCHES_G1: false, MATCHES_G2: false, MATCHES_G3: false, MATCHES: false };
       for (const b of u.matchBets) {
         const mod = matchModule(b.match.stage, b.match.matchNumber);
-        const counts = b.paymentId ? b.payment?.status === "APPROVED" : valid(paid, mod);
-        if (counts) mc[mod]++;
+        mh[mod] = true;
+        if (b.isCorrect === true) {
+          const counts = b.paymentId ? b.payment?.status === "APPROVED" : valid(paid, mod);
+          if (counts) mc[mod]++;
+        }
       }
+      const groupCorrect = u.groupBets.filter((g) => g.isCorrect === true).length;
+      const specialCorrect = u.specialBets.filter((s) => s.isCorrect === true).length;
+      const hasGroup = u.groupBets.length > 0;
+      const hasSpecial = u.specialBets.length > 0;
+      const hasBracket = u.bracketBets.length > 0;
       return {
         id: u.id,
         name: u.name ?? u.email ?? "—",
         image: u.image ?? null,
-        groupScore: valid(paid, "GROUPS") ? u.groupBets.length : 0,
+        groupScore: valid(paid, "GROUPS") ? groupCorrect : 0,
         g1Score: mc.MATCHES_G1,
         g2Score: mc.MATCHES_G2,
         g3Score: mc.MATCHES_G3,
         knockoutScore: mc.MATCHES,
-        specialScore: valid(paid, "SPECIALS") ? u.specialBets.length : 0,
+        specialScore: valid(paid, "SPECIALS") ? specialCorrect : 0,
         bracketScore: valid(paid, "BRACKET") ? u.bracketBets.reduce((s, b) => s + b.score, 0) : 0,
+        hasGroup,
+        hasG1: mh.MATCHES_G1,
+        hasG2: mh.MATCHES_G2,
+        hasG3: mh.MATCHES_G3,
+        hasSpecial,
+        hasBracket,
+        hasAny: hasGroup || hasSpecial || hasBracket || mh.MATCHES_G1 || mh.MATCHES_G2 || mh.MATCHES_G3 || mh.MATCHES,
       };
     })
     .map((u) => ({
@@ -88,7 +104,8 @@ export default async function DashboardPage() {
     }))
     .sort((a, b) => b.total - a.total);
 
-  const myRank = standings.findIndex((u) => u.id === userId) + 1;
+  const participants = standings.filter((u) => u.hasAny);
+  const myRank = participants.findIndex((u) => u.id === userId) + 1;
   const myStats = standings.find((u) => u.id === userId);
 
   const groupBetMap = groupBets.reduce((acc, b) => {
@@ -115,7 +132,7 @@ export default async function DashboardPage() {
               <p className="font-display text-6xl font-extrabold text-white leading-none tabular-nums">
                 #{myRank || "—"}
               </p>
-              <p className="text-xs text-slate-400 mt-2">de {standings.length} participantes</p>
+              <p className="text-xs text-slate-400 mt-2">de {participants.length} participantes</p>
             </div>
             <div className="text-right">
               <p className="text-[11px] text-slate-400 uppercase tracking-[0.16em] mb-1">Puntos</p>
