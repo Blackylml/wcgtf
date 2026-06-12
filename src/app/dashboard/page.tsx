@@ -138,9 +138,23 @@ export default async function DashboardPage() {
                 const user = top3[idx];
                 if (!user) return <div key={idx} className="w-20" />;
                 const isGold = idx === 0;
+                const initials = user.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
                 return (
                   <div key={user.id} className="flex flex-col items-center gap-1.5">
                     {isGold && <Crown size={18} className="text-amber-300 -mb-0.5" />}
+                    {user.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- foto de perfil de Google
+                      <img
+                        src={user.image}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        className={`rounded-full object-cover ring-2 ${isGold ? "w-14 h-14 ring-amber-400/60" : "w-11 h-11 ring-white/15"}`}
+                      />
+                    ) : (
+                      <span className={`grid place-items-center rounded-full bg-white/[0.08] ring-2 font-bold text-slate-300 ${isGold ? "w-14 h-14 ring-amber-400/60 text-base" : "w-11 h-11 ring-white/15 text-sm"}`}>
+                        {initials || "?"}
+                      </span>
+                    )}
                     <span className={`font-display font-extrabold ${PODIUM_SIZES[idx]} ${PODIUM_COLORS[idx]} tabular-nums`}>
                       {user.total}
                     </span>
