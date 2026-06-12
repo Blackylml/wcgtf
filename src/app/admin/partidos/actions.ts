@@ -40,7 +40,9 @@ export async function setResult(
   });
 
   revalidatePath("/admin/partidos");
+  revalidatePath("/admin/usuarios");
   revalidatePath("/dashboard");
+  revalidatePath("/partidos");
 }
 
 export async function clearResult(id: string) {
@@ -48,7 +50,13 @@ export async function clearResult(id: string) {
     where: { id },
     data: { homeScore: null, awayScore: null, penaltiesWinner: null },
   });
+  // Des-calificar las apuestas de este partido (vuelven a "sin calificar").
+  await prisma.matchBet.updateMany({ where: { matchId: id }, data: { isCorrect: null } });
+
   revalidatePath("/admin/partidos");
+  revalidatePath("/admin/usuarios");
+  revalidatePath("/dashboard");
+  revalidatePath("/partidos");
 }
 
 export async function bulkToggleStage(stage: Stage, open: boolean) {

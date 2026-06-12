@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   toggleMatch,
@@ -124,61 +123,59 @@ export function MatchRow({ match }: { match: Match }) {
         </div>
       </td>
 
-      <td className="px-3 py-3 w-24">
-        {hasResult ? (
-          <div className="flex items-center gap-1">
-            <span className="text-sm font-bold">
-              {match.homeScore}–{match.awayScore}
-            </span>
-            {match.penaltiesWinner && (
-              <span className="text-xs text-gray-400">(pen)</span>
-            )}
+      <td className="px-3 py-3 w-48">
+        <div className="flex items-center gap-1">
+          <Input
+            value={homeScore}
+            onChange={(e) => setHomeScore(e.target.value)}
+            type="number"
+            min="0"
+            placeholder="L"
+            className="h-7 w-10 text-xs px-1"
+          />
+          <span className="text-gray-400">-</span>
+          <Input
+            value={awayScore}
+            onChange={(e) => setAwayScore(e.target.value)}
+            type="number"
+            min="0"
+            placeholder="V"
+            className="h-7 w-10 text-xs px-1"
+          />
+          {match.penaltiesAllowed && (
+            <select
+              value={penWinner}
+              onChange={(e) => setPenWinner(e.target.value)}
+              className="h-7 text-xs border rounded px-1 w-14"
+              title="Ganador en penales"
+            >
+              <option value="">—</option>
+              <option value={match.homeTeam?.code ?? "L"}>L</option>
+              <option value={match.awayTeam?.code ?? "V"}>V</option>
+            </select>
+          )}
+          <button
+            onClick={handleResult}
+            disabled={loading || homeScore === "" || awayScore === ""}
+            className="text-xs font-medium text-green-600 hover:underline disabled:opacity-40"
+          >
+            {hasResult ? "Actualizar" : "Guardar"}
+          </button>
+          {hasResult && (
             <button
               onClick={handleClearResult}
               disabled={loading}
-              className="text-xs text-red-400 hover:underline ml-1 disabled:opacity-40"
+              className="text-xs text-red-400 hover:underline disabled:opacity-40"
+              title="Borrar resultado"
             >
               ✕
             </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1">
-            <Input
-              value={homeScore}
-              onChange={(e) => setHomeScore(e.target.value)}
-              type="number"
-              min="0"
-              placeholder="L"
-              className="h-7 w-10 text-xs px-1"
-            />
-            <span className="text-gray-400">-</span>
-            <Input
-              value={awayScore}
-              onChange={(e) => setAwayScore(e.target.value)}
-              type="number"
-              min="0"
-              placeholder="V"
-              className="h-7 w-10 text-xs px-1"
-            />
-            {match.penaltiesAllowed && (
-              <select
-                value={penWinner}
-                onChange={(e) => setPenWinner(e.target.value)}
-                className="h-7 text-xs border rounded px-1 w-16"
-              >
-                <option value="">—</option>
-                <option value={match.homeTeam?.code ?? "L"}>L</option>
-                <option value={match.awayTeam?.code ?? "V"}>V</option>
-              </select>
-            )}
-            <button
-              onClick={handleResult}
-              disabled={loading || homeScore === "" || awayScore === ""}
-              className="text-xs text-green-600 hover:underline disabled:opacity-40"
-            >
-              ✓
-            </button>
-          </div>
+          )}
+        </div>
+        {hasResult && (
+          <p className="text-[10px] text-gray-400 mt-1">
+            Guardado: {match.homeScore}–{match.awayScore}{match.penaltiesWinner ? " (pen)" : ""}
+          </p>
         )}
       </td>
 
