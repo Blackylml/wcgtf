@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { redirect } from "next/navigation";
 import { SpecialCategory } from "@/generated/prisma/client";
-import { Check, X, Clock, Crown } from "lucide-react";
+import { Check, X, Clock } from "lucide-react";
 import { matchModule } from "@/lib/modules";
 import { StandingsTable } from "./StandingsTable";
 
@@ -90,7 +90,6 @@ export default async function DashboardPage() {
 
   const myRank = standings.findIndex((u) => u.id === userId) + 1;
   const myStats = standings.find((u) => u.id === userId);
-  const top3 = standings.slice(0, 3);
 
   const groupBetMap = groupBets.reduce((acc, b) => {
     const k = b.groupPool.name;
@@ -101,10 +100,6 @@ export default async function DashboardPage() {
 
   const correctMatches = matchBets.filter((b) => b.isCorrect === true).length;
   const gradedMatches = matchBets.filter((b) => b.isCorrect !== null).length;
-
-  const PODIUM_COLORS = ["text-amber-300", "text-slate-200", "text-orange-300"];
-  const PODIUM_SIZES = ["text-3xl", "text-2xl", "text-2xl"];
-  const PODIUM_ORDER = [1, 0, 2]; // silver, gold, bronze
 
   return (
     <div className="app-shell min-h-screen text-white">
@@ -129,53 +124,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Podium */}
-        {top3.length >= 2 && (
-          <div className="animate-rise mb-5 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5" style={{ animationDelay: "80ms" }}>
-            <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-semibold mb-5 text-center">Top 3</p>
-            <div className="flex items-end justify-center gap-4">
-              {PODIUM_ORDER.map((idx) => {
-                const user = top3[idx];
-                if (!user) return <div key={idx} className="w-20" />;
-                const isGold = idx === 0;
-                const initials = user.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
-                return (
-                  <div key={user.id} className="flex flex-col items-center gap-1.5">
-                    {isGold && <Crown size={18} className="text-amber-300 -mb-0.5" />}
-                    {user.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- foto de perfil de Google
-                      <img
-                        src={user.image}
-                        alt=""
-                        referrerPolicy="no-referrer"
-                        className={`rounded-full object-cover ring-2 ${isGold ? "w-14 h-14 ring-amber-400/60" : "w-11 h-11 ring-white/15"}`}
-                      />
-                    ) : (
-                      <span className={`grid place-items-center rounded-full bg-white/[0.08] ring-2 font-bold text-slate-300 ${isGold ? "w-14 h-14 ring-amber-400/60 text-base" : "w-11 h-11 ring-white/15 text-sm"}`}>
-                        {initials || "?"}
-                      </span>
-                    )}
-                    <span className={`font-display font-extrabold ${PODIUM_SIZES[idx]} ${PODIUM_COLORS[idx]} tabular-nums`}>
-                      {user.total}
-                    </span>
-                    <p className={`text-xs font-semibold truncate max-w-[80px] text-center ${user.id === userId ? "text-green-400" : "text-white"}`}>
-                      {user.name.split(" ")[0]}
-                    </p>
-                    <div className={`flex items-center justify-center rounded-t-xl text-xs font-extrabold text-white w-16 ${
-                      isGold ? "h-16 bg-gradient-to-t from-amber-500/10 to-amber-400/30 border border-amber-400/30" :
-                      idx === 1 ? "h-11 bg-gradient-to-t from-slate-500/5 to-slate-400/20 border border-slate-400/20" :
-                      "h-9 bg-gradient-to-t from-orange-700/5 to-orange-500/20 border border-orange-500/20"
-                    }`}>
-                      {idx + 1}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Ranking — tabbed per bet type */}
+        {/* Ranking + podio por apuesta (pestañas) */}
         <StandingsTable standings={standings} currentUserId={userId} />
 
         {/* My bets */}

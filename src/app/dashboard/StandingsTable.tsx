@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Crown } from "lucide-react";
 
 export type Standing = {
   id: string;
@@ -34,20 +35,36 @@ function displayName(name: string) {
   return name.split(" ").slice(0, 2).join(" ");
 }
 
-function Avatar({ name, image }: { name: string; image: string | null }) {
+const AV_SIZE = {
+  sm: "w-6 h-6 text-[9px] ring-1 ring-white/15",
+  lg: "w-11 h-11 text-sm ring-2 ring-white/15",
+  xl: "w-14 h-14 text-base ring-2 ring-amber-400/60",
+} as const;
+
+function Avatar({ name, image, size = "sm" }: { name: string; image: string | null; size?: keyof typeof AV_SIZE }) {
+  const cls = AV_SIZE[size];
   if (image) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- foto de perfil de Google
-      <img src={image} alt="" className="w-6 h-6 rounded-full object-cover ring-1 ring-white/15 shrink-0" referrerPolicy="no-referrer" />
+      <img src={image} alt="" className={`${cls} rounded-full object-cover shrink-0`} referrerPolicy="no-referrer" />
     );
   }
   const initials = name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
   return (
-    <span className="w-6 h-6 rounded-full bg-white/[0.08] ring-1 ring-white/10 grid place-items-center text-[9px] font-bold text-slate-300 shrink-0">
+    <span className={`${cls} rounded-full bg-white/[0.08] grid place-items-center font-bold text-slate-300 shrink-0`}>
       {initials || "?"}
     </span>
   );
 }
+
+const PODIUM_ORDER = [1, 0, 2]; // plata, oro, bronce
+const PODIUM_COLORS = ["text-amber-300", "text-slate-200", "text-orange-300"];
+const PODIUM_SIZES = ["text-2xl", "text-xl", "text-xl"];
+const PODIUM_BAR = [
+  "h-14 bg-gradient-to-t from-amber-500/10 to-amber-400/30 border border-amber-400/30",
+  "h-10 bg-gradient-to-t from-slate-500/5 to-slate-400/20 border border-slate-400/20",
+  "h-8 bg-gradient-to-t from-orange-700/5 to-orange-500/20 border border-orange-500/20",
+];
 
 export function StandingsTable({ standings, currentUserId }: { standings: Standing[]; currentUserId: string }) {
   const [tab, setTab] = useState<TabKey>("total");
@@ -55,6 +72,7 @@ export function StandingsTable({ standings, currentUserId }: { standings: Standi
   const isTotal = tab === "total";
 
   const sorted = [...standings].sort((a, b) => active.metric(b) - active.metric(a) || b.total - a.total);
+  const podium = sorted.slice(0, 3);
 
   return (
     <div className="animate-rise mb-5 rounded-2xl border border-white/[0.08] bg-white/[0.025] overflow-hidden" style={{ animationDelay: "140ms" }}>
@@ -79,6 +97,33 @@ export function StandingsTable({ standings, currentUserId }: { standings: Standi
           })}
         </div>
       </div>
+
+      {/* Podio de la apuesta seleccionada */}
+      {podium.length >= 2 && (
+        <div className="px-4 py-5 border-b border-white/[0.06]">
+          <div className="flex items-end justify-center gap-5">
+            {PODIUM_ORDER.map((i) => {
+              const u = podium[i];
+              if (!u) return <div key={i} className="w-16" />;
+              const isGold = i === 0;
+              const isMe = u.id === currentUserId;
+              return (
+                <div key={u.id} className="flex flex-col items-center gap-1.5">
+                  {isGold && <Crown size={16} className="text-amber-300 -mb-0.5" />}
+                  <Avatar name={u.name} image={u.image} size={isGold ? "xl" : "lg"} />
+                  <span className={`font-display font-extrabold tabular-nums ${PODIUM_SIZES[i]} ${PODIUM_COLORS[i]}`}>{active.metric(u)}</span>
+                  <span className={`text-xs font-semibold truncate max-w-[72px] text-center ${isMe ? "text-green-400" : "text-white"}`}>
+                    {u.name.split(" ")[0]}
+                  </span>
+                  <div className={`flex items-center justify-center rounded-t-xl text-xs font-extrabold text-white w-16 ${PODIUM_BAR[i]}`}>
+                    {i + 1}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
