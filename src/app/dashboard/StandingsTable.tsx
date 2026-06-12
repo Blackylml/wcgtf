@@ -5,6 +5,7 @@ import { useState } from "react";
 export type Standing = {
   id: string;
   name: string;
+  image: string | null;
   total: number;
   groupScore: number;
   g1Score: number;
@@ -27,6 +28,26 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 const RANK_COLOR = ["text-amber-300", "text-slate-200", "text-orange-300"];
+
+/** Nombre + primer apellido (primeras dos palabras). */
+function displayName(name: string) {
+  return name.split(" ").slice(0, 2).join(" ");
+}
+
+function Avatar({ name, image }: { name: string; image: string | null }) {
+  if (image) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- foto de perfil de Google
+      <img src={image} alt="" className="w-6 h-6 rounded-full object-cover ring-1 ring-white/15 shrink-0" referrerPolicy="no-referrer" />
+    );
+  }
+  const initials = name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  return (
+    <span className="w-6 h-6 rounded-full bg-white/[0.08] ring-1 ring-white/10 grid place-items-center text-[9px] font-bold text-slate-300 shrink-0">
+      {initials || "?"}
+    </span>
+  );
+}
 
 export function StandingsTable({ standings, currentUserId }: { standings: Standing[]; currentUserId: string }) {
   const [tab, setTab] = useState<TabKey>("total");
@@ -75,9 +96,12 @@ export function StandingsTable({ standings, currentUserId }: { standings: Standi
               return (
                 <tr key={u.id} className={`border-b border-white/[0.05] ${isMe ? "bg-green-400/[0.08]" : "hover:bg-white/[0.03]"}`}>
                   <td className={`px-3 py-2.5 font-mono font-bold ${i < 3 ? RANK_COLOR[i] : "text-slate-500"}`}>{i + 1}</td>
-                  <td className="px-3 py-2.5 font-medium text-white">
-                    {u.name.split(" ")[0]}
-                    {isMe && <span className="ml-1 text-[10px] font-semibold text-green-400">tú</span>}
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Avatar name={u.name} image={u.image} />
+                      <span className="font-medium text-white truncate">{displayName(u.name)}</span>
+                      {isMe && <span className="text-[10px] font-semibold text-green-400 shrink-0">tú</span>}
+                    </div>
                   </td>
                   <td className="px-3 py-2.5 text-right font-bold text-amber-300 tabular-nums">{active.metric(u)}</td>
                   {!isTotal && <td className="px-3 py-2.5 text-right text-slate-500 tabular-nums">{u.total}</td>}

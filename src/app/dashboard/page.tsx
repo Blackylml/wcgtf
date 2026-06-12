@@ -44,7 +44,7 @@ export default async function DashboardPage() {
     prisma.bracketBet.findFirst({ where: { userId }, select: { score: true } }),
     prisma.user.findMany({
       select: {
-        id: true, name: true, email: true,
+        id: true, name: true, email: true, image: true,
         payments: { where: { module: { not: null }, status: "APPROVED" }, select: { module: true } },
         matchBets: { where: { isCorrect: true }, select: { paymentId: true, payment: { select: { status: true } }, match: { select: { stage: true, matchNumber: true } } } },
         groupBets: { where: { isCorrect: true }, select: { id: true } },
@@ -72,6 +72,7 @@ export default async function DashboardPage() {
       return {
         id: u.id,
         name: u.name ?? u.email ?? "—",
+        image: u.image ?? null,
         groupScore: valid(paid, "GROUPS") ? u.groupBets.length : 0,
         g1Score: mc.MATCHES_G1,
         g2Score: mc.MATCHES_G2,
