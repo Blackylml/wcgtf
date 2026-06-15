@@ -22,9 +22,14 @@ export function ResultSyncPanel() {
     start(async () => {
       const r = await adminAutoMapFixtures();
       if ("error" in r) { setMsg({ kind: "err", text: r.error ?? "Error" }); return; }
+      if (r.fixtures === 0) {
+        setMsg({ kind: "err", text: "La API devolvió 0 fixtures. Tu plan/temporada de API-Football probablemente no incluye el Mundial 2026 (el plan gratis suele dar solo temporadas viejas). Revisa la API key/plan." });
+        return;
+      }
       setMsg({
-        kind: "ok",
-        text: `Mapeados ${r.mapped} partidos.` + (r.unmapped.length ? ` Sin mapear (pon su ID manual): M${r.unmapped.join(", M")}.` : " Todos mapeados."),
+        kind: r.mapped > 0 ? "ok" : "err",
+        text: `API: ${r.fixtures} fixtures (ej. ${r.sample.join(" · ")}). Mapeados ${r.mapped}.` +
+          (r.mapped === 0 ? " Los nombres de la API no coinciden con tus equipos — mándame un ejemplo y ajusto el diccionario." : r.unmapped.length ? ` Sin mapear: M${r.unmapped.join(", M")}.` : " Todos mapeados."),
       });
     });
   }

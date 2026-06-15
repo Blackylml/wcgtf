@@ -107,8 +107,9 @@ function teamKeys(name: string | null, code: string | null): Set<string> {
 }
 
 /** Asigna externalId a los partidos (con equipos definidos) que aún no lo tienen, por nombre. */
-export async function autoMapFixtures(): Promise<{ mapped: number; unmapped: number[] }> {
+export async function autoMapFixtures(): Promise<{ mapped: number; unmapped: number[]; fixtures: number; sample: string[] }> {
   const fixtures = await fetchWorldCupFixtures();
+  const sample = fixtures.slice(0, 4).map((f) => `${f.home} vs ${f.away}`);
   const used = new Set(
     (await prisma.match.findMany({ where: { externalId: { not: null } }, select: { externalId: true } }))
       .map((m) => m.externalId!),
@@ -149,5 +150,5 @@ export async function autoMapFixtures(): Promise<{ mapped: number; unmapped: num
   }
 
   if (mapped > 0) revalidatePath("/admin/partidos");
-  return { mapped, unmapped };
+  return { mapped, unmapped, fixtures: fixtures.length, sample };
 }
