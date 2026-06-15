@@ -11,7 +11,7 @@ async function requireAdmin() {
 export async function adminSyncResults() {
   if (!(await requireAdmin())) return { error: "No autorizado" };
   try {
-    const r = await syncResults();
+    const r = await syncResults({ force: true });
     return { ok: true, ...r };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error al sincronizar" };

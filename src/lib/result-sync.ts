@@ -25,19 +25,40 @@ function revalidateAll() {
   revalidatePath("/dashboard");
 }
 
-/** Trae los partidos finalizados de la API y actualiza los que estén mapeados (externalId). */
-export async function syncResults(): Promise<{ checked: number; updated: number; finished: number }> {
-  const fixtures = await fetchWorldCupFixtures();
-  const finished = fixtures.filter((f) => isFinished(f.statusShort) && f.homeGoals !== null && f.awayGoals !== null);
-  const byId = new Map(finished.map((f) => [f.id, f]));
+// Ventana para auto-checar un partido: desde ~10 min después de su fin estimado
+// (kickoff + ~110 min) hasta 8 h después (más allá = postergado/cancelado → manual).
+const DUE_MIN_MS = 110 * 60 * 1000;
+const DUE_MAX_MS = 8 * 60 * 60 * 1000;
 
+/**
+ * Trae los partidos finalizados de la API y actualiza los mapeados (externalId).
+ * Sin `force`, solo llama a la API si hay un partido que ya debió terminar y sigue sin
+ * resultado (ahorra cuota). El botón "Sincronizar ahora" usa force=true.
+ */
+export async function syncResults(
+  { force = false }: { force?: boolean } = {},
+): Promise<{ checked: number; updated: number; finished: number; skipped: boolean }> {
   const matches = await prisma.match.findMany({
     where: { externalId: { not: null } },
     select: {
-      id: true, externalId: true, homeScore: true, awayScore: true, penaltiesWinner: true,
+      id: true, externalId: true, scheduledAt: true, homeScore: true, awayScore: true, penaltiesWinner: true,
       homeTeam: { select: { code: true } }, awayTeam: { select: { code: true } },
     },
   });
+
+  if (!force) {
+    const now = Date.now();
+    const due = matches.some((m) => {
+      if (m.homeScore !== null) return false; // ya tiene resultado
+      const elapsed = now - m.scheduledAt.getTime();
+      return elapsed >= DUE_MIN_MS && elapsed <= DUE_MAX_MS;
+    });
+    if (!due) return { checked: matches.length, updated: 0, finished: 0, skipped: true };
+  }
+
+  const fixtures = await fetchWorldCupFixtures();
+  const finished = fixtures.filter((f) => isFinished(f.statusShort) && f.homeGoals !== null && f.awayGoals !== null);
+  const byId = new Map(finished.map((f) => [f.id, f]));
 
   let updated = 0;
   for (const m of matches) {
@@ -55,7 +76,7 @@ export async function syncResults(): Promise<{ checked: number; updated: number;
   }
 
   if (updated > 0) revalidateAll();
-  return { checked: matches.length, updated, finished: finished.length };
+  return { checked: matches.length, updated, finished: finished.length, skipped: false };
 }
 
 // ─── Auto-mapeo de fixtures por nombre de equipo ────────────────────────────
