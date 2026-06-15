@@ -79,34 +79,9 @@ export async function syncResults(
   return { checked: matches.length, updated, finished: finished.length, skipped: false };
 }
 
-// ─── Auto-mapeo de fixtures por nombre de equipo ────────────────────────────
+// ─── Auto-mapeo de fixtures por código de equipo (abreviatura ESPN = code FIFA) ──
 
-const normalize = (s: string) =>
-  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z]/g, "");
-
-// FIFA code → nombre en inglés (como lo suele dar API-Football). Best-effort.
-const CODE_EN: Record<string, string> = {
-  MEX: "Mexico", USA: "USA", CAN: "Canada", BRA: "Brazil", ARG: "Argentina", GER: "Germany",
-  FRA: "France", ESP: "Spain", ENG: "England", POR: "Portugal", NED: "Netherlands", BEL: "Belgium",
-  ITA: "Italy", CRO: "Croatia", URU: "Uruguay", COL: "Colombia", JPN: "Japan", KOR: "South Korea",
-  AUS: "Australia", MAR: "Morocco", SEN: "Senegal", SUI: "Switzerland", DEN: "Denmark", SWE: "Sweden",
-  POL: "Poland", SRB: "Serbia", SCO: "Scotland", WAL: "Wales", RSA: "South Africa", NGA: "Nigeria",
-  EGY: "Egypt", GHA: "Ghana", CIV: "Ivory Coast", CMR: "Cameroon", TUN: "Tunisia", ALG: "Algeria",
-  QAT: "Qatar", KSA: "Saudi Arabia", IRN: "Iran", PAR: "Paraguay", PER: "Peru", CHI: "Chile",
-  ECU: "Ecuador", VEN: "Venezuela", CRC: "Costa Rica", PAN: "Panama", JAM: "Jamaica", HAI: "Haiti",
-  BIH: "Bosnia and Herzegovina", CZE: "Czechia", TUR: "Turkey", CUW: "Curacao", AUT: "Austria",
-  NOR: "Norway", UKR: "Ukraine", ROU: "Romania", NZL: "New Zealand", SVN: "Slovenia", SVK: "Slovakia",
-};
-
-function teamKeys(name: string | null, code: string | null): Set<string> {
-  const keys = new Set<string>();
-  if (name) keys.add(normalize(name));
-  if (code && CODE_EN[code]) keys.add(normalize(CODE_EN[code]));
-  if (code) keys.add(normalize(code));
-  return keys;
-}
-
-/** Asigna externalId a los partidos (con equipos definidos) que aún no lo tienen, por nombre. */
+/** Asigna externalId a los partidos (con equipos definidos) que aún no lo tienen, por código. */
 export async function autoMapFixtures(): Promise<{ mapped: number; unmapped: number[]; fixtures: number; sample: string[] }> {
   const fixtures = await fetchWorldCupFixtures();
   const sample = fixtures.slice(0, 4).map((f) => `${f.home} vs ${f.away}`);
@@ -119,8 +94,8 @@ export async function autoMapFixtures(): Promise<{ mapped: number; unmapped: num
     where: { externalId: null, homeTeamId: { not: null }, awayTeamId: { not: null } },
     select: {
       id: true, matchNumber: true,
-      homeTeam: { select: { name: true, code: true } },
-      awayTeam: { select: { name: true, code: true } },
+      homeTeam: { select: { code: true } },
+      awayTeam: { select: { code: true } },
     },
   });
 
@@ -128,16 +103,13 @@ export async function autoMapFixtures(): Promise<{ mapped: number; unmapped: num
   const unmapped: number[] = [];
 
   for (const m of matches) {
-    const homeKeys = teamKeys(m.homeTeam?.name ?? null, m.homeTeam?.code ?? null);
-    const awayKeys = teamKeys(m.awayTeam?.name ?? null, m.awayTeam?.code ?? null);
+    const hc = m.homeTeam?.code;
+    const ac = m.awayTeam?.code;
+    if (!hc || !ac) { unmapped.push(m.matchNumber); continue; }
 
     const hit = fixtures.find((f) => {
       if (used.has(f.id)) return false;
-      const fh = normalize(f.home);
-      const fa = normalize(f.away);
-      const direct = homeKeys.has(fh) && awayKeys.has(fa);
-      const swapped = homeKeys.has(fa) && awayKeys.has(fh);
-      return direct || swapped;
+      return (f.homeAbbr === hc && f.awayAbbr === ac) || (f.homeAbbr === ac && f.awayAbbr === hc);
     });
 
     if (hit) {
