@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { Stage } from "@/generated/prisma/client";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MatchRow } from "./MatchRow";
@@ -65,36 +64,17 @@ export default async function PartidosAdminPage() {
           return (
             <TabsContent key={s.key} value={s.key}>
               <BulkActions stage={s.key} label={s.label} />
-              <Card>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-gray-50 text-xs text-gray-500 uppercase">
-                          <th className="px-3 py-2 text-left">#</th>
-                          <th className="px-3 py-2 text-left">Partido</th>
-                          <th className="px-3 py-2 text-left hidden md:table-cell">Fecha / Sede</th>
-                          <th className="px-3 py-2 text-left">Precio</th>
-                          <th className="px-3 py-2 text-left">Resultado</th>
-                          <th className="px-3 py-2 text-left">Estado</th>
-                          <th className="px-3 py-2 text-left">Acción</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {stageMatches.map((m) => (
-                          <MatchRow
-                            key={`${m.id}:${m.homeScore}:${m.awayScore}:${m.penaltiesWinner}`}
-                            match={{
-                              ...m,
-                              price: Number(m.price),
-                            }}
-                          />
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-2">
+                {stageMatches.map((m) => (
+                  <MatchRow
+                    key={`${m.id}:${m.homeScore}:${m.awayScore}:${m.penaltiesWinner}`}
+                    match={{ ...m, price: Number(m.price) }}
+                  />
+                ))}
+                {stageMatches.length === 0 && (
+                  <p className="text-center text-gray-400 py-8 text-sm">Sin partidos en esta fase.</p>
+                )}
+              </div>
             </TabsContent>
           );
         })}

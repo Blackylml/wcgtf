@@ -90,121 +90,74 @@ export function MatchRow({ match }: { match: Match }) {
   }
 
   return (
-    <tr className="border-b hover:bg-gray-50">
-      <td className="px-3 py-3 text-xs text-gray-400 w-8">M{match.matchNumber}</td>
-
-      <td className="px-3 py-3">
-        <div className="text-sm font-medium">{homeName}</div>
-        <div className="text-xs text-gray-400">vs {awayName}</div>
-      </td>
-
-      <td className="px-3 py-3 text-xs text-gray-500 hidden md:table-cell">
-        <div>{dateStr} {timeStr}</div>
-        <div className="text-gray-400 truncate max-w-[160px]">{match.venue}</div>
-      </td>
-
-      <td className="px-3 py-3 w-36">
-        <div className="flex items-center gap-1">
-          <Input
-            value={priceVal}
-            onChange={(e) => setPriceVal(e.target.value)}
-            type="number"
-            min="0"
-            step="0.01"
-            className="h-7 w-20 text-xs"
-          />
-          <button
-            onClick={handlePrice}
-            disabled={loading}
-            className="text-xs text-blue-600 hover:underline disabled:opacity-40"
-          >
-            ✓
-          </button>
+    <div className="rounded-lg border bg-white p-3">
+      {/* Encabezado: equipos + fecha */}
+      <div className="flex items-start justify-between gap-2 mb-2.5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono text-gray-400 shrink-0">M{match.matchNumber}</span>
+            <span className="text-sm font-semibold text-gray-900 truncate">{homeName}</span>
+          </div>
+          <div className="text-xs text-gray-500 ml-7">vs {awayName}</div>
         </div>
-      </td>
+        <div className="text-right text-[11px] text-gray-400 shrink-0">{dateStr} {timeStr}</div>
+      </div>
 
-      <td className="px-3 py-3 w-48">
-        <div className="flex items-center gap-1">
-          <Input
-            value={homeScore}
-            onChange={(e) => setHomeScore(e.target.value)}
-            type="number"
-            min="0"
-            placeholder="L"
-            className="h-7 w-10 text-xs px-1"
-          />
-          <span className="text-gray-400">-</span>
-          <Input
-            value={awayScore}
-            onChange={(e) => setAwayScore(e.target.value)}
-            type="number"
-            min="0"
-            placeholder="V"
-            className="h-7 w-10 text-xs px-1"
-          />
-          {match.penaltiesAllowed && (
-            <select
-              value={penWinner}
-              onChange={(e) => setPenWinner(e.target.value)}
-              className="h-7 text-xs border rounded px-1 w-14"
-              title="Ganador en penales"
-            >
-              <option value="">—</option>
-              <option value={match.homeTeam?.code ?? "L"}>L</option>
-              <option value={match.awayTeam?.code ?? "V"}>V</option>
-            </select>
-          )}
-          <button
-            onClick={handleResult}
-            disabled={loading || homeScore === "" || awayScore === ""}
-            className="text-xs font-medium text-green-600 hover:underline disabled:opacity-40"
-          >
-            {hasResult ? "Actualizar" : "Guardar"}
-          </button>
-          {hasResult && (
-            <button
-              onClick={handleClearResult}
-              disabled={loading}
-              className="text-xs text-red-400 hover:underline disabled:opacity-40"
-              title="Borrar resultado"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-        {hasResult && (
-          <p className="text-[10px] text-gray-400 mt-1">
-            Guardado: {match.homeScore}–{match.awayScore}{match.penaltiesWinner ? " (pen)" : ""}
-          </p>
+      {/* Resultado */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-xs text-gray-500 w-[68px] shrink-0">Resultado</span>
+        <Input value={homeScore} onChange={(e) => setHomeScore(e.target.value)} type="number" min="0" inputMode="numeric" placeholder="L" className="h-8 w-11 text-sm px-1 text-center" />
+        <span className="text-gray-400">-</span>
+        <Input value={awayScore} onChange={(e) => setAwayScore(e.target.value)} type="number" min="0" inputMode="numeric" placeholder="V" className="h-8 w-11 text-sm px-1 text-center" />
+        {match.penaltiesAllowed && (
+          <select value={penWinner} onChange={(e) => setPenWinner(e.target.value)} className="h-8 text-xs border rounded px-1 w-14" title="Ganador en penales">
+            <option value="">—</option>
+            <option value={match.homeTeam?.code ?? "L"}>L</option>
+            <option value={match.awayTeam?.code ?? "V"}>V</option>
+          </select>
         )}
-      </td>
+        <button
+          onClick={handleResult}
+          disabled={loading || homeScore === "" || awayScore === ""}
+          className="h-8 px-3 rounded-md text-xs font-semibold bg-green-600 text-white hover:bg-green-700 disabled:opacity-40"
+        >
+          {hasResult ? "Actualizar" : "Guardar"}
+        </button>
+        {hasResult && (
+          <button onClick={handleClearResult} disabled={loading} className="h-8 px-2 text-xs text-red-500 hover:underline disabled:opacity-40" title="Borrar resultado">✕</button>
+        )}
+        {hasResult && (
+          <span className="text-[11px] text-gray-400 ml-auto">Guardado: {match.homeScore}–{match.awayScore}{match.penaltiesWinner ? " (pen)" : ""}</span>
+        )}
+      </div>
 
-      <td className="px-3 py-3 w-28">
-        <div className="flex flex-col gap-1">
-          <Badge className={match.isOpen ? "bg-green-100 text-green-800 text-xs" : "bg-gray-100 text-gray-500 text-xs"}>
-            {match.isOpen ? "Abierto" : "Cerrado"}
-          </Badge>
-          {match.stage !== "GROUP" && (
-            <button
-              onClick={handleTogglePenalties}
-              disabled={loading}
-              className={`text-xs hover:underline disabled:opacity-40 ${match.penaltiesAllowed ? "text-orange-500" : "text-gray-400"}`}
-            >
-              {match.penaltiesAllowed ? "Penales ✓" : "Penales +"}
-            </button>
-          )}
-        </div>
-      </td>
-
-      <td className="px-3 py-3 w-20">
+      {/* Controles */}
+      <div className="flex items-center gap-3 flex-wrap mt-2.5 pt-2.5 border-t text-xs">
+        <Badge className={match.isOpen ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-500"}>
+          {match.isOpen ? "Abierto" : "Cerrado"}
+        </Badge>
         <button
           onClick={handleToggle}
           disabled={loading}
-          className={`text-xs hover:underline disabled:opacity-40 ${match.isOpen ? "text-red-500" : "text-green-600"}`}
+          className={`font-medium hover:underline disabled:opacity-40 ${match.isOpen ? "text-red-500" : "text-green-600"}`}
         >
           {match.isOpen ? "Cerrar" : "Abrir"}
         </button>
-      </td>
-    </tr>
+        {match.stage !== "GROUP" && (
+          <button
+            onClick={handleTogglePenalties}
+            disabled={loading}
+            className={`hover:underline disabled:opacity-40 ${match.penaltiesAllowed ? "text-orange-500" : "text-gray-400"}`}
+          >
+            {match.penaltiesAllowed ? "Penales ✓" : "Penales +"}
+          </button>
+        )}
+        <div className="flex items-center gap-1 ml-auto">
+          <span className="text-gray-400">Precio</span>
+          <Input value={priceVal} onChange={(e) => setPriceVal(e.target.value)} type="number" min="0" step="0.01" inputMode="decimal" className="h-7 w-16 text-xs" />
+          <button onClick={handlePrice} disabled={loading} className="text-blue-600 hover:underline disabled:opacity-40">✓</button>
+        </div>
+      </div>
+    </div>
   );
 }

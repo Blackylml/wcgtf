@@ -21,14 +21,14 @@ const NAV = [
 export function AdminNav() {
   const path = usePathname();
   return (
-    <nav className="flex-1 p-3 space-y-1">
+    <nav className="flex md:flex-col gap-1 p-2 md:p-3 md:flex-1 overflow-x-auto md:overflow-visible no-scrollbar">
       {NAV.map(({ href, label, icon: Icon }) => {
         const active = href === "/admin" ? path === "/admin" : path.startsWith(href);
         return (
           <Link
             key={href}
             href={href}
-            className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            className={`group shrink-0 flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 rounded-xl text-sm font-medium transition-all ${
               active
                 ? "bg-green-400/10 text-green-300 ring-1 ring-green-400/25"
                 : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
