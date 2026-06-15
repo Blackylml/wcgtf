@@ -83,7 +83,7 @@ export default async function PartidosAdminPage() {
                       <tbody>
                         {stageMatches.map((m) => (
                           <MatchRow
-                            key={m.id}
+                            key={`${m.id}:${m.homeScore}:${m.awayScore}:${m.penaltiesWinner}`}
                             match={{
                               ...m,
                               price: Number(m.price),

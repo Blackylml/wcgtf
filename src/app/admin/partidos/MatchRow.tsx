@@ -9,7 +9,6 @@ import {
   setResult,
   clearResult,
   togglePenalties,
-  setMatchExternalId,
 } from "./actions";
 
 type Team = { id: string; name: string; flag: string | null; code: string } | null;
@@ -30,7 +29,6 @@ type Match = {
   awayScore: number | null;
   penaltiesWinner: string | null;
   penaltiesAllowed: boolean;
-  externalId: number | null;
 };
 
 export function MatchRow({ match }: { match: Match }) {
@@ -38,7 +36,6 @@ export function MatchRow({ match }: { match: Match }) {
   const [homeScore, setHomeScore] = useState(String(match.homeScore ?? ""));
   const [awayScore, setAwayScore] = useState(String(match.awayScore ?? ""));
   const [penWinner, setPenWinner] = useState(match.penaltiesWinner ?? "");
-  const [extId, setExtId] = useState(String(match.externalId ?? ""));
   const [loading, setLoading] = useState(false);
 
   const homeName = match.homeTeam?.flag
@@ -92,13 +89,6 @@ export function MatchRow({ match }: { match: Match }) {
     setLoading(false);
   }
 
-  async function handleExternalId() {
-    setLoading(true);
-    const v = extId.trim();
-    await setMatchExternalId(match.id, v === "" ? null : parseInt(v, 10));
-    setLoading(false);
-  }
-
   return (
     <tr className="border-b hover:bg-gray-50">
       <td className="px-3 py-3 text-xs text-gray-400 w-8">M{match.matchNumber}</td>
@@ -106,18 +96,6 @@ export function MatchRow({ match }: { match: Match }) {
       <td className="px-3 py-3">
         <div className="text-sm font-medium">{homeName}</div>
         <div className="text-xs text-gray-400">vs {awayName}</div>
-        <div className="flex items-center gap-1 mt-1">
-          <span className="text-[10px] text-gray-400">API</span>
-          <Input
-            value={extId}
-            onChange={(e) => setExtId(e.target.value)}
-            type="number"
-            placeholder="id"
-            title="ID del fixture en API-Football (resultados automáticos)"
-            className={`h-6 w-20 text-[11px] px-1 ${match.externalId ? "border-green-300" : ""}`}
-          />
-          <button onClick={handleExternalId} disabled={loading} className="text-[11px] text-blue-600 hover:underline disabled:opacity-40">✓</button>
-        </div>
       </td>
 
       <td className="px-3 py-3 text-xs text-gray-500 hidden md:table-cell">

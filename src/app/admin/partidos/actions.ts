@@ -12,10 +12,6 @@ function revalidateResults() {
   revalidatePath("/partidos");
 }
 
-export async function setMatchExternalId(id: string, externalId: number | null) {
-  await prisma.match.update({ where: { id }, data: { externalId } });
-  revalidatePath("/admin/partidos");
-}
 
 export async function toggleMatch(id: string, current: boolean) {
   await prisma.match.update({ where: { id }, data: { isOpen: !current } });
