@@ -74,7 +74,9 @@ CRON_SECRET       = "<openssl rand -hex 16>"        # protege /api/cron/sync-res
 1. Saca una **API key** en https://www.api-football.com (o dashboard.api-sports.io) y ponla en `FOOTBALL_API_KEY`.
 2. Define `CRON_SECRET` (cualquier string aleatorio). Vercel lo manda como `Authorization: Bearer <CRON_SECRET>` al cron.
 3. En `/admin/partidos` usa **"Importar / mapear fixtures"** una vez (liga cada partido con el de la API). Los que no mapee automáticamente, pon su `ID` de fixture a mano en la fila (campo "API").
-4. **Vercel Cron** (`vercel.json`) llama `/api/cron/sync-results` cada 15 min. ⚠️ El plan **Hobby de Vercel solo permite cron 1×/día**; para cada 15 min necesitas plan **Pro**, o usa un cron externo gratis (ej. cron-job.org) apuntando a `https://tu-app.vercel.app/api/cron/sync-results?secret=<CRON_SECRET>`.
+4. **Cron.** ⚠️ El plan **Hobby de Vercel solo permite cron 1×/día** — un `*/10` hace **fallar el deploy**. Por eso `vercel.json` está en `0 12 * * *` (diario, válido en Hobby) como respaldo. Para resultados **en tiempo real** (cada ~10 min) usa un **cron externo gratis** (ej. cron-job.org) apuntando a:
+   `https://tu-app.vercel.app/api/cron/sync-results?secret=<CRON_SECRET>`
+   (En plan **Pro** puedes cambiar `vercel.json` a `*/10 * * * *`.)
 5. El botón **"Sincronizar ahora"** funciona siempre, sin importar el cron.
 
 ---
