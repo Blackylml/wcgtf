@@ -135,6 +135,7 @@ model Match {
   penaltiesWinner  String?
   isOpen           Boolean  @default(false)
   price            Decimal  @default(0) @db.Decimal(10, 2)
+  externalId       Int?     @unique // id del fixture en API-Football (para auto-resultados)
 
   homeTeam Team?      @relation("HomeTeam", fields: [homeTeamId], references: [id])
   awayTeam Team?      @relation("AwayTeam", fields: [awayTeamId], references: [id])

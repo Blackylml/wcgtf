@@ -28,6 +28,8 @@ export const authConfig: NextAuthConfig = {
       if (path.startsWith("/api/auth")) return true;
       // MercadoPago calls the payment webhook server-to-server with no session.
       if (path.startsWith("/api/mp")) return true;
+      // El cron de resultados se autentica con CRON_SECRET, no con sesión.
+      if (path.startsWith("/api/cron")) return true;
       if (path.startsWith("/login")) return isLoggedIn ? Response.redirect(new URL("/", nextUrl)) : true;
       if (!isLoggedIn) return false;
       if (path.startsWith("/admin") && !isAdmin) return Response.redirect(new URL("/", nextUrl));

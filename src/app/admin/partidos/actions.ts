@@ -1,8 +1,21 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { Stage, MatchPick } from "@/generated/prisma/client";
+import { Stage } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
+import { applyResult } from "@/lib/result-sync";
+
+function revalidateResults() {
+  revalidatePath("/admin/partidos");
+  revalidatePath("/admin/usuarios");
+  revalidatePath("/dashboard");
+  revalidatePath("/partidos");
+}
+
+export async function setMatchExternalId(id: string, externalId: number | null) {
+  await prisma.match.update({ where: { id }, data: { externalId } });
+  revalidatePath("/admin/partidos");
+}
 
 export async function toggleMatch(id: string, current: boolean) {
   await prisma.match.update({ where: { id }, data: { isOpen: !current } });
@@ -21,28 +34,8 @@ export async function setResult(
   awayScore: number,
   penaltiesWinner: string | null
 ) {
-  await prisma.match.update({
-    where: { id },
-    data: { homeScore, awayScore, penaltiesWinner: penaltiesWinner || null },
-  });
-
-  // Score MatchBets: HOME wins if homeScore > away, AWAY if less, DRAW otherwise
-  const outcome: MatchPick =
-    homeScore > awayScore ? "HOME" : homeScore < awayScore ? "AWAY" : "DRAW";
-
-  await prisma.matchBet.updateMany({
-    where: { matchId: id, pick: outcome },
-    data: { isCorrect: true },
-  });
-  await prisma.matchBet.updateMany({
-    where: { matchId: id, pick: { not: outcome } },
-    data: { isCorrect: false },
-  });
-
-  revalidatePath("/admin/partidos");
-  revalidatePath("/admin/usuarios");
-  revalidatePath("/dashboard");
-  revalidatePath("/partidos");
+  await applyResult(id, homeScore, awayScore, penaltiesWinner || null);
+  revalidateResults();
 }
 
 export async function clearResult(id: string) {
@@ -52,11 +45,7 @@ export async function clearResult(id: string) {
   });
   // Des-calificar las apuestas de este partido (vuelven a "sin calificar").
   await prisma.matchBet.updateMany({ where: { matchId: id }, data: { isCorrect: null } });
-
-  revalidatePath("/admin/partidos");
-  revalidatePath("/admin/usuarios");
-  revalidatePath("/dashboard");
-  revalidatePath("/partidos");
+  revalidateResults();
 }
 
 export async function bulkToggleStage(stage: Stage, open: boolean) {

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MatchRow } from "./MatchRow";
 import { BulkActions } from "./BulkActions";
+import { ResultSyncPanel } from "./ResultSyncPanel";
 
 const STAGES: { key: Stage; label: string }[] = [
   { key: Stage.GROUP, label: "Grupos" },
@@ -42,6 +43,8 @@ export default async function PartidosAdminPage() {
           <span><Badge variant="outline" className="mr-1">{resultCount}</Badge> con resultado</span>
         </div>
       </div>
+
+      <ResultSyncPanel />
 
       <Tabs defaultValue="GROUP">
         <TabsList className="mb-4 flex-wrap h-auto gap-1">

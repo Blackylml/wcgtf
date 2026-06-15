@@ -1,0 +1,54 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { adminSyncResults, adminAutoMapFixtures } from "./sync-actions";
+import { RefreshCw, Link2 } from "lucide-react";
+
+export function ResultSyncPanel() {
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  function sync() {
+    setMsg(null);
+    start(async () => {
+      const r = await adminSyncResults();
+      if ("error" in r) { setMsg({ kind: "err", text: r.error ?? "Error" }); return; }
+      setMsg({ kind: "ok", text: `Sincronizado: ${r.updated} actualizados de ${r.checked} mapeados (${r.finished} finalizados en la API).` });
+    });
+  }
+
+  function map() {
+    setMsg(null);
+    start(async () => {
+      const r = await adminAutoMapFixtures();
+      if ("error" in r) { setMsg({ kind: "err", text: r.error ?? "Error" }); return; }
+      setMsg({
+        kind: "ok",
+        text: `Mapeados ${r.mapped} partidos.` + (r.unmapped.length ? ` Sin mapear (pon su ID manual): M${r.unmapped.join(", M")}.` : " Todos mapeados."),
+      });
+    });
+  }
+
+  return (
+    <div className="mb-4 rounded-lg border bg-white p-3 flex flex-wrap items-center gap-2">
+      <span className="text-sm font-medium text-gray-700 mr-1">Resultados automáticos</span>
+      <button
+        onClick={map}
+        disabled={pending}
+        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+      >
+        <Link2 size={13} /> Importar / mapear fixtures
+      </button>
+      <button
+        onClick={sync}
+        disabled={pending}
+        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+      >
+        <RefreshCw size={13} className={pending ? "animate-spin" : ""} /> Sincronizar ahora
+      </button>
+      {msg && (
+        <span className={`text-xs ${msg.kind === "ok" ? "text-green-700" : "text-red-600"}`}>{msg.text}</span>
+      )}
+    </div>
+  );
+}
