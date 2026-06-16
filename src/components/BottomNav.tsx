@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid, CalendarDays, Star, User } from "lucide-react";
+import { Home, LayoutGrid, CalendarDays, Star, User, ListChecks } from "lucide-react";
 
 const NAV = [
   { href: "/", icon: Home, label: "Inicio" },
   { href: "/grupos", icon: LayoutGrid, label: "Grupos" },
-  { href: "/partidos", icon: CalendarDays, label: "Partidos" },
+  { href: "/partidos", icon: CalendarDays, label: "Quinielas" },
+  { href: "/resultados", icon: ListChecks, label: "Resultados" },
   { href: "/especiales", icon: Star, label: "Especiales" },
   { href: "/dashboard", icon: User, label: "Yo" },
 ];

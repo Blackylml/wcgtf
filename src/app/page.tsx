@@ -26,8 +26,8 @@ const MODULES = [
   {
     href: "/partidos",
     icon: CalendarDays,
-    title: "Partidos",
-    description: "Apuesta por el resultado de cada partido.",
+    title: "Quinielas",
+    description: "Llena tus quinielas por jornada.",
     grad: "from-blue-500/[0.14] to-blue-500/[0.02]",
     border: "border-blue-500/20",
     tint: "text-blue-400",
