@@ -65,16 +65,17 @@ export async function createMatchBet(matchId: string, pick: MatchPick) {
   if (!match.penaltiesAllowed && pick === "DRAW" && match.stage !== "GROUP")
     return { error: "Empate no disponible en esta fase" };
 
-  const existing = await prisma.matchBet.findUnique({
-    where: { userId_matchId_poolModule: { userId, matchId, poolModule: KO_POOL } },
-  });
-  if (existing) return { error: "Ya tienes una apuesta en este partido" };
-
   const price = Number(match.price);
+  // Individual (partido destacado, precio propio) → bolsa aparte (poolModule null, no entra al ranking de quinielas).
+  // Cubierto por eliminatorias (sin precio) → bolsa MATCHES.
+  const pool = price > 0 ? null : KO_POOL;
+
+  const existing = await prisma.matchBet.findFirst({ where: { userId, matchId, poolModule: pool } });
+  if (existing) return { error: "Ya tienes una apuesta en este partido" };
 
   if (price > 0) {
     const payment = await prisma.payment.create({ data: { userId, amount: price, status: "PENDING" } });
-    await prisma.matchBet.create({ data: { userId, matchId, pick, poolModule: KO_POOL, paymentId: payment.id } });
+    await prisma.matchBet.create({ data: { userId, matchId, pick, poolModule: null, paymentId: payment.id } });
     revalidatePath("/partidos");
     return { individual: true, price };
   }
@@ -92,8 +93,8 @@ export async function getMatchMPUrl(matchId: string) {
   if (!session?.user?.id) return { error: "No autenticado" };
   const userId = session.user.id;
 
-  const bet = await prisma.matchBet.findUnique({
-    where: { userId_matchId_poolModule: { userId, matchId, poolModule: KO_POOL } },
+  const bet = await prisma.matchBet.findFirst({
+    where: { userId, matchId, poolModule: null },
     include: { payment: true, match: true },
   });
   if (!bet?.payment) return { error: "No se encontró la apuesta o el pago" };
@@ -131,8 +132,9 @@ export async function deleteMatchBet(matchId: string) {
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match?.isOpen) return { error: "No puedes cambiar tu apuesta con el partido cerrado" };
 
-  const bet = await prisma.matchBet.findUnique({
-    where: { userId_matchId_poolModule: { userId, matchId, poolModule: KO_POOL } },
+  const pool = Number(match.price) > 0 ? null : KO_POOL;
+  const bet = await prisma.matchBet.findFirst({
+    where: { userId, matchId, poolModule: pool },
     include: { payment: true },
   });
   if (!bet) return { error: "No tienes apuesta en este partido" };

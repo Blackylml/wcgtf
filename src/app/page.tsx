@@ -106,10 +106,8 @@ export default async function HomePage() {
     getApprovedModules(userId),
   ]);
 
-  // Partidos: individuales cuentan por su propio pago; los demás por la entrada de su bolsa.
-  const matchPts = matchBetsCorrect.filter((b) =>
-    b.paymentId ? b.payment?.status === "APPROVED" : validModules.has(b.poolModule ?? "MATCHES")
-  ).length;
+  // Solo cuentan los aciertos de bolsas de quiniela aprobadas (las apuestas individuales van aparte).
+  const matchPts = matchBetsCorrect.filter((b) => b.poolModule != null && validModules.has(b.poolModule)).length;
 
   const totalPts =
     matchPts +

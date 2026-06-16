@@ -33,7 +33,7 @@ export default async function UsuariosAdminPage() {
     const valid = (m: string) => !pricedModules.has(m) || approvedModules.has(m);
 
     const points =
-      u.matchBets.filter((b) => b.isCorrect === true && (b.paymentId ? b.payment?.status === "APPROVED" : valid(b.poolModule ?? "MATCHES"))).length +
+      u.matchBets.filter((b) => b.isCorrect === true && b.poolModule != null && valid(b.poolModule)).length +
       (valid("GROUPS") ? u.groupBets.filter((b) => b.isCorrect === true).length : 0) +
       (valid("SPECIALS") ? u.specialBets.filter((b) => b.isCorrect === true).length : 0) +
       (valid("BRACKET") ? u.bracketBets.reduce((s, b) => s + b.score, 0) : 0);

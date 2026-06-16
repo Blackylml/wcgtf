@@ -26,6 +26,7 @@ type Match = {
   userBet: MatchPick | null;
   paymentStatus: string | null;
   enabled: boolean;
+  featured?: boolean;
 };
 
 const PICK_LABELS: Record<MatchPick, string> = { HOME: "Local", DRAW: "Empate", AWAY: "Visitante" };
@@ -91,7 +92,11 @@ export function MatchCard({ match }: { match: Match }) {
   );
 
   return (
-    <div className={`rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 h-full flex flex-col transition-opacity ${!match.isOpen && phase === "pick" ? "opacity-50" : ""}`}>
+    <div className={`rounded-2xl border p-4 h-full flex flex-col transition-opacity ${
+      match.featured
+        ? "border-amber-400/40 bg-gradient-to-b from-amber-500/[0.10] to-white/[0.02] shadow-[0_12px_32px_-14px_rgba(245,177,60,0.55)]"
+        : "border-white/[0.08] bg-white/[0.025]"
+    } ${!match.isOpen && phase === "pick" ? "opacity-50" : ""}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3.5 text-[11px]">
         <span className="flex items-center gap-1.5">

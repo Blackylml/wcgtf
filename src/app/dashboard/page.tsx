@@ -65,13 +65,10 @@ export default async function DashboardPage() {
       const mc: Record<string, number> = { MATCHES_G1: 0, MATCHES_G2: 0, MATCHES_G2B: 0, MATCHES_G3: 0, MATCHES: 0 };
       const mh: Record<string, boolean> = { MATCHES_G1: false, MATCHES_G2: false, MATCHES_G2B: false, MATCHES_G3: false, MATCHES: false };
       for (const b of u.matchBets) {
-        const mod = b.poolModule ?? "MATCHES";
-        if (mc[mod] === undefined) continue;
+        const mod = b.poolModule; // null = apuesta individual (no entra al ranking de quinielas)
+        if (!mod || mc[mod] === undefined) continue;
         mh[mod] = true;
-        if (b.isCorrect === true) {
-          const counts = b.paymentId ? b.payment?.status === "APPROVED" : valid(paid, mod);
-          if (counts) mc[mod]++;
-        }
+        if (b.isCorrect === true && valid(paid, mod)) mc[mod]++;
       }
       const groupCorrect = u.groupBets.filter((g) => g.isCorrect === true).length;
       const specialCorrect = u.specialBets.filter((s) => s.isCorrect === true).length;

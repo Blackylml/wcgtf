@@ -6,7 +6,8 @@ import { PageTitle } from "@/components/PageTitle";
 import { getModuleAccess, getGroupQuinielaRanks, isLocked, type ModuleAccess, type QuinielaStanding } from "@/lib/module-access";
 import { GROUP_MATCH_QUINIELAS } from "@/lib/modules";
 import { Module } from "@/generated/prisma/client";
-import { CalendarDays, ChevronRight, Trophy, Clock, Lock, ListChecks } from "lucide-react";
+import { MatchCard } from "./MatchCard";
+import { CalendarDays, ChevronRight, Trophy, Clock, Lock, ListChecks, Flame } from "lucide-react";
 import Link from "next/link";
 
 const ACCENT: Record<string, string> = {
@@ -65,10 +66,22 @@ export default async function PartidosLobby() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const matches = await prisma.match.findMany({
-    orderBy: { matchNumber: "asc" },
-    select: { matchNumber: true, stage: true, scheduledAt: true, bets: { where: { userId }, select: { poolModule: true } } },
-  });
+  const [matches, featured] = await Promise.all([
+    prisma.match.findMany({
+      orderBy: { matchNumber: "asc" },
+      select: { matchNumber: true, stage: true, scheduledAt: true, price: true, bets: { where: { userId }, select: { poolModule: true } } },
+    }),
+    // Partidos destacados = apuestas individuales (precio propio), abiertos para apostar.
+    prisma.match.findMany({
+      where: { price: { gt: 0 } },
+      orderBy: { scheduledAt: "asc" },
+      include: {
+        homeTeam: { select: { name: true, flag: true, code: true } },
+        awayTeam: { select: { name: true, flag: true, code: true } },
+        bets: { where: { userId, poolModule: null }, select: { pick: true, payment: { select: { status: true } } } },
+      },
+    }),
+  ]);
 
   const [g1, g2, g2b, g3, mk, ranks] = await Promise.all([
     getModuleAccess(userId, "MATCHES_G1"),
@@ -99,7 +112,7 @@ export default async function PartidosLobby() {
     });
   }
 
-  const koMatches = matches.filter((m) => m.stage !== "GROUP");
+  const koMatches = matches.filter((m) => m.stage !== "GROUP" && Number(m.price) === 0);
   if (koMatches.length > 0) {
     const lockMs = Math.min(...koMatches.map((m) => m.scheduledAt.getTime()));
     cards.push({
@@ -131,9 +144,33 @@ export default async function PartidosLobby() {
           }
         />
 
+        {featured.length > 0 && (
+          <section className="mb-6">
+            <h2 className="animate-rise flex items-center gap-2 font-display text-sm font-bold text-amber-300 mb-2.5">
+              <Flame size={16} /> Partidos destacados
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {featured.map((m, i) => (
+                <div key={m.id} className="animate-rise" style={{ animationDelay: `${i * 50}ms` }}>
+                  <MatchCard match={{
+                    id: m.id, matchNumber: m.matchNumber, homeTeam: m.homeTeam, awayTeam: m.awayTeam,
+                    homeLabel: m.homeLabel, awayLabel: m.awayLabel, stage: m.stage, scheduledAt: m.scheduledAt,
+                    venue: m.venue, isOpen: m.isOpen, price: Number(m.price), penaltiesAllowed: m.penaltiesAllowed,
+                    userBet: m.bets[0]?.pick ?? null, paymentStatus: m.bets[0]?.payment?.status ?? null,
+                    enabled: true, featured: true,
+                  }} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {cards.length > 0 && (
+          <h2 className="font-display text-sm font-bold text-slate-300 mb-2.5">Quinielas por jornada</h2>
+        )}
         <div className="space-y-3">
           {cards.map((d, i) => <QuinielaCard key={d.href} d={d} i={i} />)}
-          {cards.length === 0 && <p className="text-slate-600 text-sm text-center py-10">Aún no hay quinielas disponibles.</p>}
+          {cards.length === 0 && featured.length === 0 && <p className="text-slate-600 text-sm text-center py-10">Aún no hay quinielas disponibles.</p>}
         </div>
       </div>
       <BottomNav />

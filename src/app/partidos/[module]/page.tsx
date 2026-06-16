@@ -56,9 +56,11 @@ export default async function QuinielaDetailPage({
         bets: { where: { userId, poolModule: "MATCHES" }, select: { pick: true, payment: { select: { status: true } } } },
       },
     });
-    const stages = KO_ORDER.filter((s) => matches.some((m) => m.stage === s));
+    // Los partidos con precio propio van en "Destacados", no en la quiniela de eliminatorias.
+    const covered = matches.filter((m) => Number(m.price) === 0);
+    const stages = KO_ORDER.filter((s) => covered.some((m) => m.stage === s));
     const activeStage = (stages.includes(stageParam as Stage) ? stageParam : stages[0]) as Stage ?? "R32";
-    const filtered = matches.filter((m) => m.stage === activeStage);
+    const filtered = covered.filter((m) => m.stage === activeStage);
 
     return (
       <div className="app-shell min-h-screen text-white">
