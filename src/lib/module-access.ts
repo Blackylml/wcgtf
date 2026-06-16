@@ -45,7 +45,7 @@ export async function getGroupQuinielaRanks(userId: string): Promise<Record<stri
       select: {
         id: true,
         payments: { where: { module: { not: null }, status: "APPROVED" }, select: { module: true } },
-        matchBets: { where: { match: { stage: "GROUP" } }, select: { isCorrect: true, match: { select: { matchNumber: true } } } },
+        matchBets: { select: { isCorrect: true, poolModule: true } },
       },
     }),
   ]);
@@ -56,9 +56,9 @@ export async function getGroupQuinielaRanks(userId: string): Promise<Record<stri
     const isFree = !priced.has(q.module);
     const rows = users
       .map((u) => {
-        const inRange = u.matchBets.filter((b) => b.match.matchNumber >= q.min && b.match.matchNumber <= q.max);
-        const participates = isFree ? inRange.length > 0 : u.payments.some((p) => String(p.module) === q.module);
-        const points = inRange.filter((b) => b.isCorrect === true).length;
+        const inPool = u.matchBets.filter((b) => b.poolModule === q.module);
+        const participates = isFree ? inPool.length > 0 : u.payments.some((p) => String(p.module) === q.module);
+        const points = inPool.filter((b) => b.isCorrect === true).length;
         return { id: u.id, participates, points };
       })
       .filter((r) => r.participates);

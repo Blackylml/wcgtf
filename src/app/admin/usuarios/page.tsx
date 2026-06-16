@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { matchModule } from "@/lib/modules";
 import { UserActions } from "./UserActions";
 
 export default async function UsuariosAdminPage() {
@@ -15,7 +14,7 @@ export default async function UsuariosAdminPage() {
       select: {
         id: true, name: true, email: true, role: true, createdAt: true,
         groupBets: { select: { isCorrect: true, groupPoolId: true } },
-        matchBets: { select: { isCorrect: true, paymentId: true, payment: { select: { status: true } }, match: { select: { stage: true, matchNumber: true } } } },
+        matchBets: { select: { isCorrect: true, paymentId: true, poolModule: true, payment: { select: { status: true } } } },
         specialBets: { select: { isCorrect: true } },
         bracketBets: { select: { score: true } },
         payments: { select: { amount: true, status: true, module: true } },
@@ -34,7 +33,7 @@ export default async function UsuariosAdminPage() {
     const valid = (m: string) => !pricedModules.has(m) || approvedModules.has(m);
 
     const points =
-      u.matchBets.filter((b) => b.isCorrect === true && (b.paymentId ? b.payment?.status === "APPROVED" : valid(matchModule(b.match.stage, b.match.matchNumber)))).length +
+      u.matchBets.filter((b) => b.isCorrect === true && (b.paymentId ? b.payment?.status === "APPROVED" : valid(b.poolModule ?? "MATCHES"))).length +
       (valid("GROUPS") ? u.groupBets.filter((b) => b.isCorrect === true).length : 0) +
       (valid("SPECIALS") ? u.specialBets.filter((b) => b.isCorrect === true).length : 0) +
       (valid("BRACKET") ? u.bracketBets.reduce((s, b) => s + b.score, 0) : 0);

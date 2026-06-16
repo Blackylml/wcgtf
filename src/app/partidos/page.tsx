@@ -5,7 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { PageTitle, StatPill } from "@/components/PageTitle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import { getModuleAccess, isLocked, getGroupQuinielaRanks } from "@/lib/module-access";
-import { MODULE_META, GROUP_MATCH_QUINIELAS, matchModule } from "@/lib/modules";
+import { MODULE_META, GROUP_MATCH_QUINIELAS } from "@/lib/modules";
 import { MatchCard } from "./MatchCard";
 import { QuinielaSection } from "./QuinielaSection";
 import { Stage, Module } from "@/generated/prisma/client";
@@ -26,7 +26,7 @@ async function loadMatches(userId: string) {
     include: {
       homeTeam: { select: { name: true, flag: true, code: true } },
       awayTeam: { select: { name: true, flag: true, code: true } },
-      bets: { where: { userId }, select: { pick: true, payment: { select: { status: true } } } },
+      bets: { where: { userId }, select: { pick: true, poolModule: true, payment: { select: { status: true } } } },
     },
   });
 }
@@ -50,42 +50,45 @@ export default async function PartidosPage({
   const bettedCount = filtered.filter((m) => m.bets.length > 0).length;
   const isGroup = activeStage === "GROUP";
 
-  // Acceso a cada quiniela relevante.
-  const [g1, g2, g3, mk] = await Promise.all([
+  // Acceso a cada bolsa relevante.
+  const [g1, g2, g2b, g3, mk] = await Promise.all([
     getModuleAccess(userId, "MATCHES_G1"),
     getModuleAccess(userId, "MATCHES_G2"),
+    getModuleAccess(userId, "MATCHES_G2B"),
     getModuleAccess(userId, "MATCHES_G3"),
     getModuleAccess(userId, "MATCHES"),
   ]);
   const accessByModule: Record<string, typeof g1> = {
-    MATCHES_G1: g1, MATCHES_G2: g2, MATCHES_G3: g3, MATCHES: mk,
+    MATCHES_G1: g1, MATCHES_G2: g2, MATCHES_G2B: g2b, MATCHES_G3: g3, MATCHES: mk,
   };
   const ranks = isGroup ? await getGroupQuinielaRanks(userId) : {};
-  const enabledFor = (m: MatchRow) => accessByModule[matchModule(m.stage, m.matchNumber)].entered;
 
-  const renderCard = (m: MatchRow, i: number) => (
-    <div key={m.id} className="animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}>
-      <MatchCard
-        match={{
-          id: m.id,
-          matchNumber: m.matchNumber,
-          homeTeam: m.homeTeam,
-          awayTeam: m.awayTeam,
-          homeLabel: m.homeLabel,
-          awayLabel: m.awayLabel,
-          stage: m.stage,
-          scheduledAt: m.scheduledAt,
-          venue: m.venue,
-          isOpen: m.isOpen,
-          price: Number(m.price),
-          penaltiesAllowed: m.penaltiesAllowed,
-          userBet: m.bets[0]?.pick ?? null,
-          paymentStatus: m.bets[0]?.payment?.status ?? null,
-          enabled: enabledFor(m),
-        }}
-      />
-    </div>
-  );
+  const renderCard = (m: MatchRow, i: number) => {
+    const koBet = m.bets.find((b) => b.poolModule === "MATCHES");
+    return (
+      <div key={m.id} className="animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}>
+        <MatchCard
+          match={{
+            id: m.id,
+            matchNumber: m.matchNumber,
+            homeTeam: m.homeTeam,
+            awayTeam: m.awayTeam,
+            homeLabel: m.homeLabel,
+            awayLabel: m.awayLabel,
+            stage: m.stage,
+            scheduledAt: m.scheduledAt,
+            venue: m.venue,
+            isOpen: m.isOpen,
+            price: Number(m.price),
+            penaltiesAllowed: m.penaltiesAllowed,
+            userBet: koBet?.pick ?? null,
+            paymentStatus: koBet?.payment?.status ?? null,
+            enabled: mk.entered,
+          }}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="app-shell min-h-screen text-white">
@@ -97,7 +100,7 @@ export default async function PartidosPage({
             icon={CalendarDays}
             accent="blue"
             title="Partidos"
-            subtitle="Apuesta por el resultado de cada partido. La fase de grupos son 3 quinielas por jornada."
+            subtitle="Apuesta por el resultado de cada partido. La Jornada 2 tiene dos bolsas: $50 y $250."
             right={<StatPill>{bettedCount}/{filtered.length}</StatPill>}
           />
         </div>
@@ -159,7 +162,7 @@ export default async function PartidosPage({
                     awayName: m.awayTeam?.name ?? m.awayLabel ?? "Por definir",
                     awayFlag: m.awayTeam?.flag ?? null,
                     awayCode: m.awayTeam?.code ?? null,
-                    userBet: m.bets[0]?.pick ?? null,
+                    userBet: m.bets.find((b) => b.poolModule === q.module)?.pick ?? null,
                   }))}
                 />
               );

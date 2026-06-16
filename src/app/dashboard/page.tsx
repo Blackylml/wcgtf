@@ -5,7 +5,6 @@ import { BottomNav } from "@/components/BottomNav";
 import { redirect } from "next/navigation";
 import { SpecialCategory } from "@/generated/prisma/client";
 import { Check, X, Clock } from "lucide-react";
-import { matchModule } from "@/lib/modules";
 import { StandingsTable } from "./StandingsTable";
 
 const SPECIAL_LABELS: Record<SpecialCategory, string> = {
@@ -46,7 +45,7 @@ export default async function DashboardPage() {
       select: {
         id: true, name: true, email: true, image: true,
         payments: { where: { module: { not: null }, status: "APPROVED" }, select: { module: true } },
-        matchBets: { select: { isCorrect: true, paymentId: true, payment: { select: { status: true } }, match: { select: { stage: true, matchNumber: true } } } },
+        matchBets: { select: { isCorrect: true, paymentId: true, poolModule: true, payment: { select: { status: true } } } },
         groupBets: { select: { isCorrect: true } },
         specialBets: { select: { isCorrect: true } },
         bracketBets: { select: { score: true } },
@@ -62,11 +61,12 @@ export default async function DashboardPage() {
   const standings = allUsers
     .map((u) => {
       const paid = new Set(u.payments.map((p) => p.module).filter(Boolean) as string[]);
-      // Partidos: puntos (correctos, según pago) y participación (tiene apuesta) por quiniela.
-      const mc: Record<string, number> = { MATCHES_G1: 0, MATCHES_G2: 0, MATCHES_G3: 0, MATCHES: 0 };
-      const mh: Record<string, boolean> = { MATCHES_G1: false, MATCHES_G2: false, MATCHES_G3: false, MATCHES: false };
+      // Partidos: puntos (correctos, según pago) y participación (tiene apuesta) por bolsa.
+      const mc: Record<string, number> = { MATCHES_G1: 0, MATCHES_G2: 0, MATCHES_G2B: 0, MATCHES_G3: 0, MATCHES: 0 };
+      const mh: Record<string, boolean> = { MATCHES_G1: false, MATCHES_G2: false, MATCHES_G2B: false, MATCHES_G3: false, MATCHES: false };
       for (const b of u.matchBets) {
-        const mod = matchModule(b.match.stage, b.match.matchNumber);
+        const mod = b.poolModule ?? "MATCHES";
+        if (mc[mod] === undefined) continue;
         mh[mod] = true;
         if (b.isCorrect === true) {
           const counts = b.paymentId ? b.payment?.status === "APPROVED" : valid(paid, mod);
@@ -85,6 +85,7 @@ export default async function DashboardPage() {
         groupScore: valid(paid, "GROUPS") ? groupCorrect : 0,
         g1Score: mc.MATCHES_G1,
         g2Score: mc.MATCHES_G2,
+        g2bScore: mc.MATCHES_G2B,
         g3Score: mc.MATCHES_G3,
         knockoutScore: mc.MATCHES,
         specialScore: valid(paid, "SPECIALS") ? specialCorrect : 0,
@@ -92,15 +93,16 @@ export default async function DashboardPage() {
         hasGroup,
         hasG1: mh.MATCHES_G1,
         hasG2: mh.MATCHES_G2,
+        hasG2b: mh.MATCHES_G2B,
         hasG3: mh.MATCHES_G3,
         hasSpecial,
         hasBracket,
-        hasAny: hasGroup || hasSpecial || hasBracket || mh.MATCHES_G1 || mh.MATCHES_G2 || mh.MATCHES_G3 || mh.MATCHES,
+        hasAny: hasGroup || hasSpecial || hasBracket || mh.MATCHES_G1 || mh.MATCHES_G2 || mh.MATCHES_G2B || mh.MATCHES_G3 || mh.MATCHES,
       };
     })
     .map((u) => ({
       ...u,
-      total: u.groupScore + u.g1Score + u.g2Score + u.g3Score + u.knockoutScore + u.specialScore + u.bracketScore,
+      total: u.groupScore + u.g1Score + u.g2Score + u.g2bScore + u.g3Score + u.knockoutScore + u.specialScore + u.bracketScore,
     }))
     .sort((a, b) => b.total - a.total);
 

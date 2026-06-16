@@ -5,11 +5,14 @@ import { auth } from "@/auth";
 import { MatchPick, Module } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { getModuleAccess, moduleLockAt, isLocked } from "@/lib/module-access";
-import { matchModule } from "@/lib/modules";
+import { quinielaRange } from "@/lib/modules";
+
+// Las apuestas individuales / eliminatorias viven en la bolsa de eliminatorias.
+const KO_POOL: Module = "MATCHES";
 
 /**
- * Guarda toda la quiniela de una jornada de un jalón (upsert de cada pronóstico).
- * Solo afecta partidos abiertos que pertenecen a la quiniela indicada.
+ * Guarda toda la quiniela de una bolsa de un jalón (upsert de cada pronóstico).
+ * Cada bolsa (module) guarda sus propios picks (poolModule), independientes entre bolsas.
  */
 export async function saveQuinielaBets(module: Module, picks: { matchId: string; pick: MatchPick }[]) {
   const session = await auth();
@@ -20,6 +23,7 @@ export async function saveQuinielaBets(module: Module, picks: { matchId: string;
   if (!access.entered) return { error: "Primero paga la entrada de esta quiniela" };
   if (isLocked(await moduleLockAt(module))) return { error: "La quiniela ya cerró (empezó el primer partido)" };
 
+  const range = quinielaRange(module);
   const matches = await prisma.match.findMany({
     where: { id: { in: picks.map((p) => p.matchId) } },
     select: { id: true, stage: true, matchNumber: true, penaltiesAllowed: true },
@@ -28,13 +32,16 @@ export async function saveQuinielaBets(module: Module, picks: { matchId: string;
 
   for (const { matchId, pick } of picks) {
     const m = byId.get(matchId);
-    // El isOpen individual ya no gobierna la quiniela; el cierre por tiempo (arriba) sí.
     if (!m) continue;
-    if (matchModule(m.stage, m.matchNumber) !== module) continue;
+    // El partido debe pertenecer a esta bolsa (rango de jornada, o eliminatorias).
+    const inPool = range
+      ? m.stage === "GROUP" && m.matchNumber >= range.min && m.matchNumber <= range.max
+      : m.stage !== "GROUP";
+    if (!inPool) continue;
     if (pick === "DRAW" && m.stage !== "GROUP" && !m.penaltiesAllowed) continue;
     await prisma.matchBet.upsert({
-      where: { userId_matchId: { userId, matchId } },
-      create: { userId, matchId, pick },
+      where: { userId_matchId_poolModule: { userId, matchId, poolModule: module } },
+      create: { userId, matchId, pick, poolModule: module },
       update: { pick },
     });
   }
@@ -44,9 +51,9 @@ export async function saveQuinielaBets(module: Module, picks: { matchId: string;
 }
 
 /**
- * Crea la apuesta del partido.
+ * Crea la apuesta de un partido de ELIMINATORIAS (bolsa MATCHES).
  * - Partido con precio propio (> 0) → apuesta INDIVIDUAL: crea un Payment por la apuesta.
- * - Partido sin precio → cubierto por la entrada del módulo Partidos (gratis).
+ * - Partido sin precio → cubierto por la entrada de eliminatorias.
  */
 export async function createMatchBet(matchId: string, pick: MatchPick) {
   const session = await auth();
@@ -58,36 +65,35 @@ export async function createMatchBet(matchId: string, pick: MatchPick) {
   if (!match.penaltiesAllowed && pick === "DRAW" && match.stage !== "GROUP")
     return { error: "Empate no disponible en esta fase" };
 
-  const existing = await prisma.matchBet.findUnique({ where: { userId_matchId: { userId, matchId } } });
+  const existing = await prisma.matchBet.findUnique({
+    where: { userId_matchId_poolModule: { userId, matchId, poolModule: KO_POOL } },
+  });
   if (existing) return { error: "Ya tienes una apuesta en este partido" };
 
   const price = Number(match.price);
 
   if (price > 0) {
-    // Apuesta individual: pago propio por este partido.
     const payment = await prisma.payment.create({ data: { userId, amount: price, status: "PENDING" } });
-    await prisma.matchBet.create({ data: { userId, matchId, pick, paymentId: payment.id } });
+    await prisma.matchBet.create({ data: { userId, matchId, pick, poolModule: KO_POOL, paymentId: payment.id } });
     revalidatePath("/partidos");
     return { individual: true, price };
   }
 
-  // Cubierto por la entrada de su quiniela (jornada de grupos o eliminatorias).
-  const mod = matchModule(match.stage, match.matchNumber);
-  const access = await getModuleAccess(userId, mod);
+  const access = await getModuleAccess(userId, KO_POOL);
   if (!access.entered) return { error: "Primero paga la entrada de esta quiniela" };
-  await prisma.matchBet.create({ data: { userId, matchId, pick } });
+  await prisma.matchBet.create({ data: { userId, matchId, pick, poolModule: KO_POOL } });
   revalidatePath("/partidos");
   return { individual: false };
 }
 
-/** Genera la URL de MercadoPago para la apuesta individual de un partido. */
+/** Genera la URL de MercadoPago para la apuesta individual de un partido (eliminatorias). */
 export async function getMatchMPUrl(matchId: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "No autenticado" };
   const userId = session.user.id;
 
   const bet = await prisma.matchBet.findUnique({
-    where: { userId_matchId: { userId, matchId } },
+    where: { userId_matchId_poolModule: { userId, matchId, poolModule: KO_POOL } },
     include: { payment: true, match: true },
   });
   if (!bet?.payment) return { error: "No se encontró la apuesta o el pago" };
@@ -116,7 +122,7 @@ export async function getMatchMPUrl(matchId: string) {
   return { redirectUrl: pref.init_point };
 }
 
-/** Borra la apuesta del partido (y su pago individual si lo tiene y no fue aprobado). */
+/** Borra la apuesta de eliminatorias (y su pago individual si lo tiene y no fue aprobado). */
 export async function deleteMatchBet(matchId: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "No autenticado" };
@@ -126,7 +132,7 @@ export async function deleteMatchBet(matchId: string) {
   if (!match?.isOpen) return { error: "No puedes cambiar tu apuesta con el partido cerrado" };
 
   const bet = await prisma.matchBet.findUnique({
-    where: { userId_matchId: { userId, matchId } },
+    where: { userId_matchId_poolModule: { userId, matchId, poolModule: KO_POOL } },
     include: { payment: true },
   });
   if (!bet) return { error: "No tienes apuesta en este partido" };

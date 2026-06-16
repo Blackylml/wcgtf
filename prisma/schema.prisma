@@ -153,19 +153,20 @@ enum Stage {
 }
 
 model MatchBet {
-  id        String    @id @default(cuid())
-  userId    String
-  matchId   String
-  pick      MatchPick
-  isCorrect Boolean?
-  createdAt DateTime  @default(now())
+  id         String    @id @default(cuid())
+  userId     String
+  matchId    String
+  pick       MatchPick
+  poolModule Module?   // bolsa/quiniela a la que pertenece (permite picks independientes por bolsa)
+  isCorrect  Boolean?
+  createdAt  DateTime  @default(now())
 
   user      User     @relation(fields: [userId], references: [id])
   match     Match    @relation(fields: [matchId], references: [id])
   payment   Payment? @relation(fields: [paymentId], references: [id])
   paymentId String?
 
-  @@unique([userId, matchId])
+  @@unique([userId, matchId, poolModule])
 }
 
 enum MatchPick {
@@ -286,6 +287,7 @@ enum Module {
   MATCHES
   MATCHES_G1
   MATCHES_G2
+  MATCHES_G2B
   MATCHES_G3
   BRACKET
   SPECIALS
