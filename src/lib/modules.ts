@@ -6,7 +6,7 @@ export const MODULE_META: Record<Module, { label: string; path: string; accent: 
   GROUPS: { label: "Fase de Grupos", path: "/grupos", accent: "green" },
   MATCHES_G1: { label: "Jornada 1", path: "/partidos", accent: "blue" },
   MATCHES_G2: { label: "Jornada 2 · $50", path: "/partidos", accent: "blue" },
-  MATCHES_G2B: { label: "Jornada 2 · $250", path: "/partidos", accent: "purple" },
+  MATCHES_G2B: { label: "Jornada 2 · Premio $250", path: "/partidos", accent: "purple" },
   MATCHES_G3: { label: "Jornada 3", path: "/partidos", accent: "blue" },
   MATCHES: { label: "Partidos (eliminatorias)", path: "/partidos", accent: "blue" },
   BRACKET: { label: "Bracket", path: "/bracket", accent: "amber" },
@@ -23,7 +23,7 @@ export const ALL_MODULES: Module[] = ["GROUPS", "MATCHES_G1", "MATCHES_G2", "MAT
 export const GROUP_MATCH_QUINIELAS: { module: Module; label: string; min: number; max: number }[] = [
   { module: "MATCHES_G1", label: "Jornada 1", min: 1, max: 24 },
   { module: "MATCHES_G2", label: "Jornada 2 · $50", min: 25, max: 48 },
-  { module: "MATCHES_G2B", label: "Jornada 2 · $250", min: 25, max: 48 },
+  { module: "MATCHES_G2B", label: "Jornada 2 · Premio $250", min: 25, max: 48 },
   { module: "MATCHES_G3", label: "Jornada 3", min: 49, max: 72 },
 ];
 

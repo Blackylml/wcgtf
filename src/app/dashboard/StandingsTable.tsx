@@ -30,7 +30,7 @@ const TABS = [
   { key: "group", label: "Grupos", metric: (r: Standing) => r.groupScore, has: (r: Standing) => r.hasGroup },
   { key: "g1", label: "Jornada 1", metric: (r: Standing) => r.g1Score, has: (r: Standing) => r.hasG1 },
   { key: "g2", label: "J2 · $50", metric: (r: Standing) => r.g2Score, has: (r: Standing) => r.hasG2 },
-  { key: "g2b", label: "J2 · $250", metric: (r: Standing) => r.g2bScore, has: (r: Standing) => r.hasG2b },
+  { key: "g2b", label: "J2 · Premio $250", metric: (r: Standing) => r.g2bScore, has: (r: Standing) => r.hasG2b },
   { key: "g3", label: "Jornada 3", metric: (r: Standing) => r.g3Score, has: (r: Standing) => r.hasG3 },
   { key: "special", label: "Especiales", metric: (r: Standing) => r.specialScore, has: (r: Standing) => r.hasSpecial },
   { key: "bracket", label: "Bracket", metric: (r: Standing) => r.bracketScore, has: (r: Standing) => r.hasBracket },
