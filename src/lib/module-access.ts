@@ -32,6 +32,49 @@ export function isLocked(lockAt: Date | null): boolean {
   return lockAt != null && Date.now() >= lockAt.getTime();
 }
 
+export type Participant = { id: string; name: string; image: string | null };
+
+/**
+ * Participantes CONFIRMADOS de una bolsa/quiniela:
+ * - bolsa de paga → usuarios con pago APROBADO de ese módulo.
+ * - bolsa gratis → usuarios que ya hicieron al menos una apuesta en ella.
+ */
+export async function getConfirmedParticipants(module: Module): Promise<Participant[]> {
+  const settings = await prisma.moduleSettings.findUnique({ where: { module } });
+  const priced = Number(settings?.price ?? 0) > 0;
+  const sel = { id: true, name: true, email: true, image: true } as const;
+
+  const dedupe = (users: { id: string; name: string | null; email: string | null; image: string | null }[]) => {
+    const map = new Map<string, Participant>();
+    for (const u of users) if (!map.has(u.id)) map.set(u.id, { id: u.id, name: u.name ?? u.email ?? "—", image: u.image ?? null });
+    return [...map.values()];
+  };
+
+  if (priced) {
+    const pays = await prisma.payment.findMany({
+      where: { module, status: "APPROVED" },
+      select: { user: { select: sel } },
+    });
+    return dedupe(pays.map((p) => p.user));
+  }
+
+  // Bolsa gratis → quien tenga apuesta en ella.
+  if (module === "GROUPS") {
+    const r = await prisma.groupBet.findMany({ select: { user: { select: sel } } });
+    return dedupe(r.map((x) => x.user));
+  }
+  if (module === "SPECIALS") {
+    const r = await prisma.specialBet.findMany({ select: { user: { select: sel } } });
+    return dedupe(r.map((x) => x.user));
+  }
+  if (module === "BRACKET") {
+    const r = await prisma.bracketBet.findMany({ select: { user: { select: sel } } });
+    return dedupe(r.map((x) => x.user));
+  }
+  const r = await prisma.matchBet.findMany({ where: { poolModule: module }, select: { user: { select: sel } } });
+  return dedupe(r.map((x) => x.user));
+}
+
 export type QuinielaStanding = { rank: number; total: number; points: number; ranked: boolean };
 
 /**

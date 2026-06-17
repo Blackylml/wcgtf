@@ -4,7 +4,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle } from "@/components/PageTitle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
-import { getModuleAccess } from "@/lib/module-access";
+import { Participants } from "@/components/Participants";
+import { getModuleAccess, getConfirmedParticipants } from "@/lib/module-access";
 import { MODULE_META } from "@/lib/modules";
 import { BracketForm } from "./BracketForm";
 import { BracketCancel } from "./BracketBetStatus";
@@ -37,6 +38,7 @@ export default async function BracketPage() {
       : Promise.resolve(null),
     getModuleAccess(userId, "BRACKET"),
   ]);
+  const participants = await getConfirmedParticipants("BRACKET");
 
   const gate = (
     <ModuleEntryGate
@@ -129,6 +131,8 @@ export default async function BracketPage() {
 
           {bracketSession?.isOpen && <BracketCancel />}
         </div>
+
+        <Participants participants={participants} />
       </Shell>
     );
   }
@@ -167,6 +171,8 @@ export default async function BracketPage() {
           <p className="text-sm text-slate-400">Paga la entrada para llenar tu bracket.</p>
         </div>
       )}
+
+      <Participants participants={participants} />
     </Shell>
   );
 }

@@ -4,7 +4,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle, StatPill } from "@/components/PageTitle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
-import { getModuleAccess } from "@/lib/module-access";
+import { Participants } from "@/components/Participants";
+import { getModuleAccess, getConfirmedParticipants } from "@/lib/module-access";
 import { MODULE_META } from "@/lib/modules";
 import { SpecialCard } from "./SpecialCard";
 import { SpecialCategory } from "@/generated/prisma/client";
@@ -33,6 +34,7 @@ export default async function EspecialesPage() {
     }),
     getModuleAccess(userId, "SPECIALS"),
   ]);
+  const participants = await getConfirmedParticipants("SPECIALS");
 
   const betMap = new Map(bets.map((b) => [b.category, { player: b.player }]));
 
@@ -82,6 +84,8 @@ export default async function EspecialesPage() {
             })}
           </div>
         )}
+
+        {players.length > 0 && <Participants participants={participants} />}
       </div>
 
       <BottomNav />

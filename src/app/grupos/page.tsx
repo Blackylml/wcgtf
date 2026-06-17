@@ -4,7 +4,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle, StatPill } from "@/components/PageTitle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
-import { getModuleAccess } from "@/lib/module-access";
+import { Participants } from "@/components/Participants";
+import { getModuleAccess, getConfirmedParticipants } from "@/lib/module-access";
 import { MODULE_META } from "@/lib/modules";
 import { LayoutGrid } from "lucide-react";
 import { GroupCard } from "./GroupCard";
@@ -25,6 +26,7 @@ export default async function GruposPage() {
     }),
     getModuleAccess(userId, "GROUPS"),
   ]);
+  const participants = await getConfirmedParticipants("GROUPS");
 
   const openCount = groups.filter((g) => g.isOpen).length;
   const betCount = groups.filter((g) => g.bets.length > 0).length;
@@ -72,6 +74,8 @@ export default async function GruposPage() {
             </div>
           ))}
         </div>
+
+        <Participants participants={participants} />
       </div>
 
       <BottomNav />
