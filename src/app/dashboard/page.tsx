@@ -54,9 +54,9 @@ export default async function DashboardPage() {
     prisma.moduleSettings.findMany(),
   ]);
 
-  // Un módulo con precio > 0 solo cuenta si el usuario tiene su entrada APROBADA.
-  const pricedModules = new Set(moduleSettings.filter((s) => Number(s.price) > 0).map((s) => s.module));
-  const valid = (paidModules: Set<string>, m: string) => !pricedModules.has(m as never) || paidModules.has(m);
+  // Un módulo con precio > 0 solo cuenta/aparece si el usuario tiene su entrada APROBADA.
+  const pricedModules = new Set(moduleSettings.filter((s) => Number(s.price) > 0).map((s) => String(s.module)));
+  const valid = (paidModules: Set<string>, m: string) => !pricedModules.has(m) || paidModules.has(m);
 
   const standings = allUsers
     .map((u) => {
@@ -72,9 +72,11 @@ export default async function DashboardPage() {
       }
       const groupCorrect = u.groupBets.filter((g) => g.isCorrect === true).length;
       const specialCorrect = u.specialBets.filter((s) => s.isCorrect === true).length;
-      const hasGroup = u.groupBets.length > 0;
-      const hasSpecial = u.specialBets.length > 0;
-      const hasBracket = u.bracketBets.length > 0;
+      // Participa (aparece en el ranking) solo si: bolsa gratis con apuesta, o bolsa de paga con entrada aprobada.
+      const conf = (m: string, hasBet: boolean) => (pricedModules.has(m) ? paid.has(m) : hasBet);
+      const hasGroup = conf("GROUPS", u.groupBets.length > 0);
+      const hasSpecial = conf("SPECIALS", u.specialBets.length > 0);
+      const hasBracket = conf("BRACKET", u.bracketBets.length > 0);
       return {
         id: u.id,
         name: u.name ?? u.email ?? "—",
@@ -88,13 +90,17 @@ export default async function DashboardPage() {
         specialScore: valid(paid, "SPECIALS") ? specialCorrect : 0,
         bracketScore: valid(paid, "BRACKET") ? u.bracketBets.reduce((s, b) => s + b.score, 0) : 0,
         hasGroup,
-        hasG1: mh.MATCHES_G1,
-        hasG2: mh.MATCHES_G2,
-        hasG2b: mh.MATCHES_G2B,
-        hasG3: mh.MATCHES_G3,
+        hasG1: conf("MATCHES_G1", mh.MATCHES_G1),
+        hasG2: conf("MATCHES_G2", mh.MATCHES_G2),
+        hasG2b: conf("MATCHES_G2B", mh.MATCHES_G2B),
+        hasG3: conf("MATCHES_G3", mh.MATCHES_G3),
         hasSpecial,
         hasBracket,
-        hasAny: hasGroup || hasSpecial || hasBracket || mh.MATCHES_G1 || mh.MATCHES_G2 || mh.MATCHES_G2B || mh.MATCHES_G3 || mh.MATCHES,
+        hasAny:
+          hasGroup || hasSpecial || hasBracket ||
+          conf("MATCHES_G1", mh.MATCHES_G1) || conf("MATCHES_G2", mh.MATCHES_G2) ||
+          conf("MATCHES_G2B", mh.MATCHES_G2B) || conf("MATCHES_G3", mh.MATCHES_G3) ||
+          conf("MATCHES", mh.MATCHES),
       };
     })
     .map((u) => ({
