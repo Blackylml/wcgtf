@@ -4,8 +4,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle } from "@/components/PageTitle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
-import { Participants } from "@/components/Participants";
-import { getModuleAccess, getConfirmedParticipants } from "@/lib/module-access";
+import { Leaderboard } from "@/components/Leaderboard";
+import { getModuleAccess, getQuinielaLeaderboard } from "@/lib/module-access";
 import { MODULE_META } from "@/lib/modules";
 import { BracketForm } from "./BracketForm";
 import { BracketCancel } from "./BracketBetStatus";
@@ -38,7 +38,7 @@ export default async function BracketPage() {
       : Promise.resolve(null),
     getModuleAccess(userId, "BRACKET"),
   ]);
-  const participants = await getConfirmedParticipants("BRACKET");
+  const participants = await getQuinielaLeaderboard("BRACKET");
 
   const gate = (
     <ModuleEntryGate
@@ -132,7 +132,7 @@ export default async function BracketPage() {
           {bracketSession?.isOpen && <BracketCancel />}
         </div>
 
-        <Participants participants={participants} />
+        <Leaderboard rows={participants} currentUserId={userId} />
       </Shell>
     );
   }
@@ -172,7 +172,7 @@ export default async function BracketPage() {
         </div>
       )}
 
-      <Participants participants={participants} />
+      <Leaderboard rows={participants} currentUserId={userId} />
     </Shell>
   );
 }

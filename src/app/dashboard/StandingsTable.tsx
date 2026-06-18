@@ -26,7 +26,6 @@ export type Standing = {
 };
 
 const TABS = [
-  { key: "total", label: "General", metric: (r: Standing) => r.total, has: (r: Standing) => r.hasAny },
   { key: "group", label: "Grupos", metric: (r: Standing) => r.groupScore, has: (r: Standing) => r.hasGroup },
   { key: "g1", label: "Jornada 1", metric: (r: Standing) => r.g1Score, has: (r: Standing) => r.hasG1 },
   { key: "g2", label: "J2 · $50", metric: (r: Standing) => r.g2Score, has: (r: Standing) => r.hasG2 },
@@ -76,10 +75,20 @@ const PODIUM_BAR = [
   "h-8 bg-gradient-to-t from-orange-700/5 to-orange-500/20 border border-orange-500/20",
 ];
 
+// Quiniela más reciente con datos (jornadas, de la última a la primera) → pestaña por defecto.
+const MATCH_RECENCY: TabKey[] = ["g3", "g2b", "g2", "g1"];
+function pickDefault(rows: Standing[]): TabKey {
+  for (const k of MATCH_RECENCY) {
+    const t = TABS.find((x) => x.key === k)!;
+    if (rows.some((r) => t.has(r))) return k;
+  }
+  const any = TABS.find((t) => rows.some((r) => t.has(r)));
+  return (any?.key ?? TABS[0].key) as TabKey;
+}
+
 export function StandingsTable({ standings, currentUserId }: { standings: Standing[]; currentUserId: string }) {
-  const [tab, setTab] = useState<TabKey>("total");
+  const [tab, setTab] = useState<TabKey>(() => pickDefault(standings));
   const active = TABS.find((t) => t.key === tab)!;
-  const isTotal = tab === "total";
 
   const sorted = standings.filter(active.has).sort((a, b) => active.metric(b) - active.metric(a) || b.total - a.total);
   const podium = sorted.slice(0, 3);
@@ -142,7 +151,7 @@ export function StandingsTable({ standings, currentUserId }: { standings: Standi
               <th className="px-3 py-2 text-left w-8">#</th>
               <th className="px-3 py-2 text-left">Jugador</th>
               <th className="px-3 py-2 text-right font-bold text-white">Pts</th>
-              {!isTotal && <th className="px-3 py-2 text-right text-slate-600">Total</th>}
+              <th className="px-3 py-2 text-right text-slate-600">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -159,12 +168,12 @@ export function StandingsTable({ standings, currentUserId }: { standings: Standi
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-right font-bold text-amber-300 tabular-nums">{active.metric(u)}</td>
-                  {!isTotal && <td className="px-3 py-2.5 text-right text-slate-500 tabular-nums">{u.total}</td>}
+                  <td className="px-3 py-2.5 text-right text-slate-500 tabular-nums">{u.total}</td>
                 </tr>
               );
             })}
             {sorted.length === 0 && (
-              <tr><td colSpan={isTotal ? 3 : 4} className="px-3 py-8 text-center text-slate-600">Sin participantes</td></tr>
+              <tr><td colSpan={4} className="px-3 py-8 text-center text-slate-600">Sin participantes</td></tr>
             )}
           </tbody>
         </table>

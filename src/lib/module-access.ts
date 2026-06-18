@@ -32,47 +32,42 @@ export function isLocked(lockAt: Date | null): boolean {
   return lockAt != null && Date.now() >= lockAt.getTime();
 }
 
-export type Participant = { id: string; name: string; image: string | null };
+export type LeaderRow = { id: string; name: string; image: string | null; points: number };
+
+const userName = (u: { name: string | null; email: string | null }) => u.name ?? u.email ?? "—";
 
 /**
- * Participantes CONFIRMADOS de una bolsa/quiniela:
+ * Ranking de una bolsa/quiniela entre participantes CONFIRMADOS:
  * - bolsa de paga → usuarios con pago APROBADO de ese módulo.
  * - bolsa gratis → usuarios que ya hicieron al menos una apuesta en ella.
+ * Ordenado por puntos (aciertos) descendente.
  */
-export async function getConfirmedParticipants(module: Module): Promise<Participant[]> {
+export async function getQuinielaLeaderboard(module: Module): Promise<LeaderRow[]> {
   const settings = await prisma.moduleSettings.findUnique({ where: { module } });
   const priced = Number(settings?.price ?? 0) > 0;
   const sel = { id: true, name: true, email: true, image: true } as const;
+  const pay = { where: { module, status: "APPROVED" as const }, select: { id: true } };
+  const sort = (rows: LeaderRow[]) => rows.sort((a, b) => b.points - a.points);
 
-  const dedupe = (users: { id: string; name: string | null; email: string | null; image: string | null }[]) => {
-    const map = new Map<string, Participant>();
-    for (const u of users) if (!map.has(u.id)) map.set(u.id, { id: u.id, name: u.name ?? u.email ?? "—", image: u.image ?? null });
-    return [...map.values()];
-  };
-
-  if (priced) {
-    const pays = await prisma.payment.findMany({
-      where: { module, status: "APPROVED" },
-      select: { user: { select: sel } },
-    });
-    return dedupe(pays.map((p) => p.user));
-  }
-
-  // Bolsa gratis → quien tenga apuesta en ella.
   if (module === "GROUPS") {
-    const r = await prisma.groupBet.findMany({ select: { user: { select: sel } } });
-    return dedupe(r.map((x) => x.user));
+    const users = await prisma.user.findMany({ select: { ...sel, payments: pay, groupBets: { select: { isCorrect: true } } } });
+    return sort(users.filter((u) => (priced ? u.payments.length > 0 : u.groupBets.length > 0))
+      .map((u) => ({ id: u.id, name: userName(u), image: u.image, points: u.groupBets.filter((b) => b.isCorrect === true).length })));
   }
   if (module === "SPECIALS") {
-    const r = await prisma.specialBet.findMany({ select: { user: { select: sel } } });
-    return dedupe(r.map((x) => x.user));
+    const users = await prisma.user.findMany({ select: { ...sel, payments: pay, specialBets: { select: { isCorrect: true } } } });
+    return sort(users.filter((u) => (priced ? u.payments.length > 0 : u.specialBets.length > 0))
+      .map((u) => ({ id: u.id, name: userName(u), image: u.image, points: u.specialBets.filter((b) => b.isCorrect === true).length })));
   }
   if (module === "BRACKET") {
-    const r = await prisma.bracketBet.findMany({ select: { user: { select: sel } } });
-    return dedupe(r.map((x) => x.user));
+    const users = await prisma.user.findMany({ select: { ...sel, payments: pay, bracketBets: { select: { score: true } } } });
+    return sort(users.filter((u) => (priced ? u.payments.length > 0 : u.bracketBets.length > 0))
+      .map((u) => ({ id: u.id, name: userName(u), image: u.image, points: u.bracketBets.reduce((s, b) => s + b.score, 0) })));
   }
-  const r = await prisma.matchBet.findMany({ where: { poolModule: module }, select: { user: { select: sel } } });
-  return dedupe(r.map((x) => x.user));
+  // bolsa de partidos
+  const users = await prisma.user.findMany({ select: { ...sel, payments: pay, matchBets: { where: { poolModule: module }, select: { isCorrect: true } } } });
+  return sort(users.filter((u) => (priced ? u.payments.length > 0 : u.matchBets.length > 0))
+    .map((u) => ({ id: u.id, name: userName(u), image: u.image, points: u.matchBets.filter((b) => b.isCorrect === true).length })));
 }
 
 export type QuinielaStanding = { rank: number; total: number; points: number; ranked: boolean };
