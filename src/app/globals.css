@@ -215,6 +215,20 @@
 }
 .animate-halo-pulse { animation: haloPulse 2.4s ease-in-out infinite; }
 
+/* Floating picker avatars on the live hero */
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+.animate-floaty { animation: floaty 3.2s ease-in-out infinite; }
+
+/* Pulsing dot for the LIVE badge */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.35; transform: scale(0.7); }
+}
+.animate-live-dot { animation: livePulse 1.2s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-rise, .animate-halo-pulse { animation: none; opacity: 1; }
+  .animate-rise, .animate-halo-pulse, .animate-floaty, .animate-live-dot { animation: none; opacity: 1; }
 }

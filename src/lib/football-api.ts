@@ -9,6 +9,8 @@ export type ApiFixture = {
   id: number;
   date: string;
   statusShort: string;   // FT, PEN, LIVE, NS
+  state: string;         // pre | in | post
+  detail: string;        // "45'", "HT", "FT", etc.
   home: string;
   away: string;
   homeAbbr: string;      // = code FIFA (MEX, RSA, ...)
@@ -37,7 +39,7 @@ type EspnCompetitor = {
 type EspnEvent = {
   id: string;
   date: string;
-  status?: { type?: { state?: string; completed?: boolean } };
+  status?: { type?: { state?: string; completed?: boolean; shortDetail?: string } };
   competitions?: { competitors?: EspnCompetitor[] }[];
 };
 
@@ -48,7 +50,7 @@ function parseEvent(e: EspnEvent): ApiFixture | null {
   if (!home || !away) return null;
 
   const completed = !!e.status?.type?.completed;
-  const state = e.status?.type?.state; // pre | in | post
+  const state = e.status?.type?.state ?? "pre"; // pre | in | post
   const penHome = home.shootoutScore != null ? Number(home.shootoutScore) : null;
   const penAway = away.shootoutScore != null ? Number(away.shootoutScore) : null;
   const hasPens = penHome != null && penAway != null && (penHome > 0 || penAway > 0);
@@ -58,6 +60,8 @@ function parseEvent(e: EspnEvent): ApiFixture | null {
     id: Number(e.id),
     date: e.date,
     statusShort,
+    state,
+    detail: e.status?.type?.shortDetail ?? "",
     home: home.team?.displayName ?? home.team?.name ?? "",
     away: away.team?.displayName ?? away.team?.name ?? "",
     homeAbbr: home.team?.abbreviation ?? "",
@@ -69,9 +73,9 @@ function parseEvent(e: EspnEvent): ApiFixture | null {
   };
 }
 
-export async function fetchWorldCupFixtures(): Promise<ApiFixture[]> {
+export async function fetchWorldCupFixtures(dates?: string): Promise<ApiFixture[]> {
   const league = process.env.ESPN_LEAGUE ?? "fifa.world";
-  const range = process.env.ESPN_DATE_RANGE ?? "20260611-20260720";
+  const range = dates ?? process.env.ESPN_DATE_RANGE ?? "20260611-20260720";
   const url = `${ESPN_BASE}/${league}/scoreboard?dates=${range}&limit=400`;
 
   const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" });

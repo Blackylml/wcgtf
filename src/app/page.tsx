@@ -2,8 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
-import { Countdown } from "@/components/Countdown";
-import { FlagCircle } from "@/components/FlagCircle";
+import { NextMatchHero, type PickPeople } from "@/components/NextMatchHero";
 import { getApprovedModules } from "@/lib/module-access";
 import Link from "next/link";
 import {
@@ -90,12 +89,38 @@ export default async function HomePage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  // Next upcoming match
-  const nextMatch = await prisma.match.findFirst({
-    where: { scheduledAt: { gt: new Date() } },
-    orderBy: { scheduledAt: "asc" },
+  // Partido "héroe": uno en curso (empezó hace ≤3.5 h y aún sin marcador final),
+  // o si no, el próximo por jugarse.
+  const now = new Date();
+  const liveSince = new Date(now.getTime() - 3.5 * 60 * 60 * 1000);
+  const liveMatch = await prisma.match.findFirst({
+    where: { scheduledAt: { lte: now, gte: liveSince }, homeScore: null },
+    orderBy: { scheduledAt: "desc" },
     include: { homeTeam: true, awayTeam: true },
   });
+  const nextMatch =
+    liveMatch ??
+    (await prisma.match.findFirst({
+      where: { scheduledAt: { gt: now } },
+      orderBy: { scheduledAt: "asc" },
+      include: { homeTeam: true, awayTeam: true },
+    }));
+
+  // Quiénes eligieron cada lado del partido héroe (avatares flotantes).
+  const people: PickPeople = { HOME: [], DRAW: [], AWAY: [] };
+  if (nextMatch) {
+    const bets = await prisma.matchBet.findMany({
+      where: { matchId: nextMatch.id },
+      select: { pick: true, user: { select: { id: true, name: true, image: true } } },
+    });
+    const seen = new Set<string>(); // dedupe por usuario (puede tener pick en varias bolsas)
+    for (const b of bets) {
+      if (seen.has(b.user.id)) continue;
+      seen.add(b.user.id);
+      const bucket = people[b.pick as keyof PickPeople];
+      if (bucket) bucket.push({ id: b.user.id, name: b.user.name ?? "—", image: b.user.image ?? null });
+    }
+  }
 
   // User quick stats
   const [matchBetsCorrect, groupBetsCorrect, specialBetsCorrect, bracketBet, validModules] = await Promise.all([
@@ -123,52 +148,21 @@ export default async function HomePage() {
       <AppHeader />
 
       <div className="relative z-10 max-w-2xl mx-auto px-4 pt-5 pb-28 space-y-4">
-        {/* ── Próximo partido (hero) ───────────────────────────────── */}
+        {/* ── Partido héroe (semi-vivo) ────────────────────────────── */}
         {nextMatch && (
-          <section className="animate-rise relative rounded-3xl overflow-hidden border border-white/10 stadium-bg shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
-            <div className="absolute inset-0 stadium-lines" />
-            <div className="relative p-5 sm:p-6">
-              <p className="text-[11px] font-bold text-green-400 uppercase tracking-[0.22em] mb-5">
-                Próximo partido
-              </p>
-
-              {/* Teams row */}
-              <div className="flex items-center justify-between gap-2 mb-5">
-                <div className="flex flex-col items-center gap-2 w-[80px] shrink-0">
-                  <FlagCircle
-                    flag={nextMatch.homeTeam?.flag}
-                    code={nextMatch.homeTeam?.code}
-                    size={62}
-                    ring="ring-green-400/40"
-                  />
-                  <span className="text-xs font-bold text-white text-center leading-tight line-clamp-2">
-                    {homeName}
-                  </span>
-                </div>
-
-                <span className="grid place-items-center w-11 h-11 rounded-full bg-[#0b1424] ring-1 ring-green-400/60 animate-halo-pulse shrink-0">
-                  <span className="font-display font-extrabold text-xs text-green-400 tracking-wide">VS</span>
-                </span>
-
-                <div className="flex flex-col items-center gap-2 w-[80px] shrink-0">
-                  <FlagCircle
-                    flag={nextMatch.awayTeam?.flag}
-                    code={nextMatch.awayTeam?.code}
-                    size={62}
-                    ring="ring-blue-400/40"
-                  />
-                  <span className="text-xs font-bold text-white text-center leading-tight line-clamp-2">
-                    {awayName}
-                  </span>
-                </div>
-              </div>
-
-              {/* Countdown row — full width */}
-              <div className="flex justify-center">
-                <Countdown target={nextMatch.scheduledAt.toISOString()} />
-              </div>
-            </div>
-          </section>
+          <NextMatchHero
+            matchId={nextMatch.id}
+            homeName={homeName}
+            awayName={awayName}
+            homeFlag={nextMatch.homeTeam?.flag ?? null}
+            awayFlag={nextMatch.awayTeam?.flag ?? null}
+            homeCode={nextMatch.homeTeam?.code ?? null}
+            awayCode={nextMatch.awayTeam?.code ?? null}
+            scheduledAt={nextMatch.scheduledAt.toISOString()}
+            initialHomeScore={nextMatch.homeScore}
+            initialAwayScore={nextMatch.awayScore}
+            people={people}
+          />
         )}
 
         {/* ── Mis puntos ───────────────────────────────────────────── */}
