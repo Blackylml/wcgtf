@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Flag, LayoutGrid, CalendarDays, Trophy, Star, CreditCard, Users, DollarSign,
+  LayoutDashboard, Flag, LayoutGrid, CalendarDays, Trophy, Star, CreditCard, Users, DollarSign, ListChecks,
 } from "lucide-react";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
+  { href: "/admin/picks", label: "Picks", icon: ListChecks },
   { href: "/admin/precios", label: "Precios", icon: DollarSign },
   { href: "/admin/equipos", label: "Equipos", icon: Flag },
   { href: "/admin/grupos", label: "Grupos", icon: LayoutGrid },
