@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { fetchWorldCupFixtures } from "@/lib/football-api";
+import { applyResult } from "@/lib/result-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,7 @@ export async function GET(req: Request) {
     where: { id: matchId },
     select: {
       externalId: true, scheduledAt: true,
+      homeScore: true, awayScore: true, penaltiesWinner: true,
       homeTeam: { select: { code: true } },
       awayTeam: { select: { code: true } },
     },
@@ -51,6 +54,24 @@ export async function GET(req: Request) {
     const reversed = !!ourHome && !!ourAway && f.homeAbbr === ourAway && f.awayAbbr === ourHome;
     const homeGoals = reversed ? f.awayGoals : f.homeGoals;
     const awayGoals = reversed ? f.homeGoals : f.awayGoals;
+
+    // Auto-guardado: si ESPN marca el partido como FINALIZADO, persistimos el
+    // resultado (y calificamos apuestas) sin esperar al cron diario. Así el HUD
+    // avanza al siguiente partido en cuanto alguien tiene la app abierta.
+    if (f.state === "post" && homeGoals !== null && awayGoals !== null) {
+      let penWinner: string | null = null;
+      if (f.statusShort === "PEN" && f.penHome !== null && f.penAway !== null) {
+        penWinner = f.penHome > f.penAway ? f.homeAbbr : f.awayAbbr;
+      }
+      const changed =
+        match.homeScore !== homeGoals || match.awayScore !== awayGoals || match.penaltiesWinner !== penWinner;
+      if (changed) {
+        await applyResult(matchId, homeGoals, awayGoals, penWinner);
+        revalidatePath("/");
+        revalidatePath("/resultados");
+        revalidatePath("/dashboard");
+      }
+    }
 
     return NextResponse.json({
       available: true,

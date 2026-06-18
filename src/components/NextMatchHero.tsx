@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Countdown } from "@/components/Countdown";
 import { FlagCircle } from "@/components/FlagCircle";
 
@@ -103,6 +104,8 @@ export function NextMatchHero({
   const kickoff = new Date(scheduledAt).getTime();
   const [started, setStarted] = useState(false);
   const [live, setLive] = useState<LiveState | null>(null);
+  const router = useRouter();
+  const refreshedRef = useRef<string | null>(null);
 
   // ¿Ya empezó? (evita Date.now() en el render por las reglas de pureza)
   useEffect(() => {
@@ -133,6 +136,17 @@ export function NextMatchHero({
       clearInterval(id);
     };
   }, [started, matchId]);
+
+  // Cuando ESPN marca el partido como FINALIZADO, el endpoint ya guardó el
+  // resultado; refrescamos (una sola vez por partido) para que el servidor
+  // re-seleccione el héroe y avance al siguiente sin recargar a mano.
+  useEffect(() => {
+    if (live?.available && live.state === "post" && refreshedRef.current !== matchId) {
+      refreshedRef.current = matchId;
+      const t = setTimeout(() => router.refresh(), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [live, matchId, router]);
 
   // Marcador a mostrar: el de la API si está disponible, si no el guardado en BD.
   const hasApiScore = live?.available && live.homeGoals != null && live.awayGoals != null;
