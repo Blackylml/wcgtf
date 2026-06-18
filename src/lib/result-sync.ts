@@ -65,13 +65,22 @@ export async function syncResults(
     const f = byId.get(m.externalId!);
     if (!f || f.homeGoals === null || f.awayGoals === null) continue;
 
+    // ESPN puede listar el partido con local/visitante invertido respecto a nuestra BD.
+    // Orientamos el marcador por CÓDIGO de equipo (abreviatura ESPN = Team.code), no por posición.
+    const ourHome = m.homeTeam?.code ?? null;
+    const ourAway = m.awayTeam?.code ?? null;
+    const reversed = !!ourHome && !!ourAway && f.homeAbbr === ourAway && f.awayAbbr === ourHome;
+    const hs = reversed ? f.awayGoals : f.homeGoals;
+    const as = reversed ? f.homeGoals : f.awayGoals;
+
     let penWinner: string | null = null;
     if (f.statusShort === "PEN" && f.penHome !== null && f.penAway !== null) {
-      penWinner = f.penHome > f.penAway ? (m.homeTeam?.code ?? null) : (m.awayTeam?.code ?? null);
+      // Ganador de penales por código (independiente de la orientación).
+      penWinner = f.penHome > f.penAway ? f.homeAbbr : f.awayAbbr;
     }
 
-    if (m.homeScore === f.homeGoals && m.awayScore === f.awayGoals && m.penaltiesWinner === penWinner) continue;
-    await applyResult(m.id, f.homeGoals, f.awayGoals, penWinner);
+    if (m.homeScore === hs && m.awayScore === as && m.penaltiesWinner === penWinner) continue;
+    await applyResult(m.id, hs, as, penWinner);
     updated++;
   }
 
