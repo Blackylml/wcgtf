@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { syncResults, autoMapFixtures } from "@/lib/result-sync";
+import { syncResults, autoMapFixtures, syncKickoffs } from "@/lib/result-sync";
 
 async function requireAdmin() {
   const session = await auth();
@@ -25,5 +25,15 @@ export async function adminAutoMapFixtures() {
     return { ok: true, ...r };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error al importar fixtures" };
+  }
+}
+
+export async function adminSyncKickoffs() {
+  if (!(await requireAdmin())) return { error: "No autorizado" };
+  try {
+    const r = await syncKickoffs();
+    return { ok: true, ...r };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Error al corregir horarios" };
   }
 }

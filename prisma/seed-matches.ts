@@ -19,10 +19,14 @@ function parseStage(fase: string): Stage {
 }
 
 function parseDate(fecha: string, hora: string): Date {
+  // Monterrey = UTC-6 todo el año (México sin horario de verano desde 2022).
+  // Construimos el instante con offset explícito para no depender de la zona
+  // horaria de la máquina que ejecuta el seed (setHours usaba la TZ local y
+  // corría las horas ~1 h cuando se sembraba en un entorno con DST).
   const [h, m] = hora.split(":").map(Number);
-  const d = new Date(`${fecha}T00:00:00-06:00`); // Monterrey = UTC-6
-  d.setHours(h, m, 0, 0);
-  return d;
+  const hh = String(h).padStart(2, "0");
+  const mm = String(m).padStart(2, "0");
+  return new Date(`${fecha}T${hh}:${mm}:00-06:00`);
 }
 
 const partidos = [

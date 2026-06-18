@@ -88,6 +88,41 @@ export async function syncResults(
   return { checked: matches.length, updated, finished: finished.length, skipped: false };
 }
 
+/**
+ * Corrige el horario (scheduledAt) de los partidos mapeados usando la fecha real
+ * de ESPN (UTC). Útil porque el seed original guardó algunas horas con la zona
+ * horaria de la máquina que lo ejecutó (quedaron corridas ~1 h).
+ */
+export async function syncKickoffs(): Promise<{ checked: number; updated: number }> {
+  const fixtures = await fetchWorldCupFixtures();
+  const byId = new Map(fixtures.map((f) => [f.id, f]));
+
+  const matches = await prisma.match.findMany({
+    where: { externalId: { not: null } },
+    select: { id: true, externalId: true, scheduledAt: true },
+  });
+
+  let updated = 0;
+  for (const m of matches) {
+    const f = byId.get(m.externalId!);
+    if (!f?.date) continue;
+    const espnAt = new Date(f.date);
+    if (Number.isNaN(espnAt.getTime())) continue;
+    // Solo si difiere más de 1 minuto (evita escrituras por segundos de desfase).
+    if (Math.abs(espnAt.getTime() - m.scheduledAt.getTime()) <= 60_000) continue;
+    await prisma.match.update({ where: { id: m.id }, data: { scheduledAt: espnAt } });
+    updated++;
+  }
+
+  if (updated > 0) {
+    revalidatePath("/admin/partidos");
+    revalidatePath("/partidos");
+    revalidatePath("/resultados");
+    revalidatePath("/");
+  }
+  return { checked: matches.length, updated };
+}
+
 // ─── Auto-mapeo de fixtures por código de equipo (abreviatura ESPN = code FIFA) ──
 
 /** Asigna externalId a los partidos (con equipos definidos) que aún no lo tienen, por código. */

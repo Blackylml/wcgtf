@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { syncResults } from "@/lib/result-sync";
+import { syncResults, syncKickoffs } from "@/lib/result-sync";
 
 /**
  * Sincroniza resultados desde la API de fútbol.
@@ -16,8 +16,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // Corrige horarios desviados (seed con TZ incorrecta) y luego sincroniza resultados.
+    const kickoffs = await syncKickoffs();
     const result = await syncResults();
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: true, kickoffs, ...result });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("sync-results error:", msg);
