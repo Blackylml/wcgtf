@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { MODULE_META, GROUP_MATCH_QUINIELAS } from "@/lib/modules";
+import { getLastJornadaWinners } from "@/lib/module-access";
 import { PicksExplorer, type PicksPayload, type Participant } from "./PicksExplorer";
 import type { Module } from "@/generated/prisma/client";
 
@@ -23,6 +24,7 @@ function outcomeOf(homeScore: number | null, awayScore: number | null): "HOME" |
 }
 
 export default async function AdminPicksPage() {
+  const winnerIds = [...(await getLastJornadaWinners())];
   const [matchBets, groupBets, specialBets, bracketBets, teams] = await Promise.all([
     prisma.matchBet.findMany({
       select: {
@@ -146,7 +148,7 @@ export default async function AdminPicksPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Picks de todos</h1>
       <p className="text-sm text-gray-500 mb-6">Apuestas de cada participante, separadas por quiniela.</p>
-      <PicksExplorer payload={payload} />
+      <PicksExplorer payload={payload} winnerIds={winnerIds} />
     </div>
   );
 }

@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserActions } from "./UserActions";
+import { getLastJornadaWinners } from "@/lib/module-access";
+import { WinnerStar } from "@/components/WinnerStar";
 
 export default async function UsuariosAdminPage() {
   const session = await auth();
@@ -22,6 +24,7 @@ export default async function UsuariosAdminPage() {
     }),
     prisma.moduleSettings.findMany(),
   ]);
+  const winners = await getLastJornadaWinners();
 
   // Un módulo con precio > 0 solo cuenta si el usuario tiene su entrada APROBADA.
   const pricedModules = new Set(moduleSettings.filter((s) => Number(s.price) > 0).map((s) => String(s.module)));
@@ -83,7 +86,7 @@ export default async function UsuariosAdminPage() {
               {rows.map((r) => (
                 <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{r.name}</p>
+                    <p className="font-medium text-gray-900 flex items-center gap-1.5">{r.name}{winners.has(r.id) && <WinnerStar />}</p>
                     <p className="text-xs text-gray-400">{r.email}</p>
                   </td>
                   <td className="px-3 py-3 text-center">

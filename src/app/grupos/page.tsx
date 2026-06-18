@@ -5,7 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { PageTitle, StatPill } from "@/components/PageTitle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import { Leaderboard } from "@/components/Leaderboard";
-import { getModuleAccess, getQuinielaLeaderboard } from "@/lib/module-access";
+import { getModuleAccess, getQuinielaLeaderboard, getLastJornadaWinners } from "@/lib/module-access";
 import { MODULE_META } from "@/lib/modules";
 import { LayoutGrid } from "lucide-react";
 import { GroupCard } from "./GroupCard";
@@ -27,6 +27,7 @@ export default async function GruposPage() {
     getModuleAccess(userId, "GROUPS"),
   ]);
   const participants = await getQuinielaLeaderboard("GROUPS");
+  const winnerIds = [...(await getLastJornadaWinners())];
 
   const openCount = groups.filter((g) => g.isOpen).length;
   const betCount = groups.filter((g) => g.bets.length > 0).length;
@@ -75,7 +76,7 @@ export default async function GruposPage() {
           ))}
         </div>
 
-        <Leaderboard rows={participants} currentUserId={userId} />
+        <Leaderboard rows={participants} currentUserId={userId} winnerIds={winnerIds} />
       </div>
 
       <BottomNav />

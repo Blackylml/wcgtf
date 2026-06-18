@@ -70,6 +70,41 @@ export async function getQuinielaLeaderboard(module: Module): Promise<LeaderRow[
     .map((u) => ({ id: u.id, name: userName(u), image: u.image, points: u.matchBets.filter((b) => b.isCorrect === true).length })));
 }
 
+// Jornadas de grupos en orden, con sus bolsas. La J2 tiene dos bolsas ($50 y Premio $250).
+const STAR_JORNADAS: { range: [number, number]; pools: Module[] }[] = [
+  { range: [1, 24], pools: ["MATCHES_G1"] },
+  { range: [25, 48], pools: ["MATCHES_G2", "MATCHES_G2B"] },
+  { range: [49, 72], pools: ["MATCHES_G3"] },
+];
+
+/**
+ * Ganador(es) de la "jornada pasada" = la última jornada de grupos con TODOS sus
+ * partidos resueltos. Se marcan con una estrella en toda la app. Maneja empates
+ * (puede haber más de un ganador) y, en la J2, ambas bolsas. Temporal/cosmético.
+ */
+export async function getLastJornadaWinners(): Promise<Set<string>> {
+  const matches = await prisma.match.findMany({
+    where: { stage: "GROUP" },
+    select: { matchNumber: true, homeScore: true },
+  });
+
+  let target: (typeof STAR_JORNADAS)[number] | null = null;
+  for (const j of STAR_JORNADAS) {
+    const inRange = matches.filter((m) => m.matchNumber >= j.range[0] && m.matchNumber <= j.range[1]);
+    if (inRange.length > 0 && inRange.every((m) => m.homeScore !== null)) target = j;
+  }
+  if (!target) return new Set();
+
+  const winners = new Set<string>();
+  for (const pool of target.pools) {
+    const rows = await getQuinielaLeaderboard(pool);
+    const top = rows[0]?.points ?? 0;
+    if (top <= 0) continue;
+    for (const r of rows) if (r.points === top) winners.add(r.id);
+  }
+  return winners;
+}
+
 export type QuinielaStanding = { rank: number; total: number; points: number; ranked: boolean };
 
 /**

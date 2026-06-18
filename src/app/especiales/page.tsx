@@ -5,7 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { PageTitle, StatPill } from "@/components/PageTitle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import { Leaderboard } from "@/components/Leaderboard";
-import { getModuleAccess, getQuinielaLeaderboard } from "@/lib/module-access";
+import { getModuleAccess, getQuinielaLeaderboard, getLastJornadaWinners } from "@/lib/module-access";
 import { MODULE_META } from "@/lib/modules";
 import { SpecialCard } from "./SpecialCard";
 import { SpecialCategory } from "@/generated/prisma/client";
@@ -35,6 +35,7 @@ export default async function EspecialesPage() {
     getModuleAccess(userId, "SPECIALS"),
   ]);
   const participants = await getQuinielaLeaderboard("SPECIALS");
+  const winnerIds = [...(await getLastJornadaWinners())];
 
   const betMap = new Map(bets.map((b) => [b.category, { player: b.player }]));
 
@@ -85,7 +86,7 @@ export default async function EspecialesPage() {
           </div>
         )}
 
-        {players.length > 0 && <Leaderboard rows={participants} currentUserId={userId} />}
+        {players.length > 0 && <Leaderboard rows={participants} currentUserId={userId} winnerIds={winnerIds} />}
       </div>
 
       <BottomNav />

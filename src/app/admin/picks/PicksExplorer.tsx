@@ -1,8 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, createContext, useContext } from "react";
+import { WinnerStar } from "@/components/WinnerStar";
 
 export type Participant = { id: string; name: string; image: string | null };
+
+const WinnersContext = createContext<Set<string>>(new Set());
+
+/** Nombre + estrella si ganó la jornada pasada. */
+function UserName({ id, name }: { id: string; name: string }) {
+  const winners = useContext(WinnersContext);
+  return (
+    <span className="inline-flex items-center gap-1">
+      {firstName(name)}
+      {winners.has(id) && <WinnerStar size={11} />}
+    </span>
+  );
+}
 
 type MatchCol = {
   id: string;
@@ -69,7 +83,7 @@ function MatchMatrix({ pool }: { pool: MatchPool }) {
             </th>
             {pool.users.map((u) => (
               <th key={u.id} className="border-b border-r px-2 py-2 font-medium text-gray-600 whitespace-nowrap align-bottom" title={u.name}>
-                <span className="block max-w-[64px] truncate">{firstName(u.name)}</span>
+                <span className="block max-w-[80px]"><UserName id={u.id} name={u.name} /></span>
               </th>
             ))}
           </tr>
@@ -127,7 +141,7 @@ function GroupsView({ groups }: { groups: GroupTab[] }) {
               <tbody>
                 {g.rows.map((r) => (
                   <tr key={r.user.id} className="border-b last:border-0">
-                    <td className="px-3 py-1.5 whitespace-nowrap text-gray-800">{firstName(r.user.name)}</td>
+                    <td className="px-3 py-1.5 whitespace-nowrap text-gray-800"><UserName id={r.user.id} name={r.user.name} /></td>
                     {r.slots.map((s, i) => (
                       <td key={i} className="px-2 py-1.5 text-center">
                         {s ? (
@@ -164,7 +178,7 @@ function SpecialsView({ specials }: { specials: SpecialTab }) {
           {specials.rows.map((r) => (
             <tr key={r.user.id} className="even:bg-gray-50/40">
               <td className="sticky left-0 z-10 bg-white even:bg-gray-50 border-b border-r px-3 py-1.5 whitespace-nowrap text-gray-800">
-                {firstName(r.user.name)}
+                <UserName id={r.user.id} name={r.user.name} />
               </td>
               {specials.categories.map((c) => {
                 const p = r.picks[c.key];
@@ -201,7 +215,7 @@ function BracketView({ rows }: { rows: BracketRow[] }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.user.id} className="border-b last:border-0">
-              <td className="px-3 py-1.5 whitespace-nowrap text-gray-800">{firstName(r.user.name)}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap text-gray-800"><UserName id={r.user.id} name={r.user.name} /></td>
               <td className="px-3 py-1.5 whitespace-nowrap font-medium text-amber-700">{r.champion}</td>
               <td className="px-3 py-1.5 whitespace-nowrap text-gray-600">{r.third}</td>
               <td className="px-3 py-1.5 text-right font-semibold">{r.score}</td>
@@ -213,7 +227,8 @@ function BracketView({ rows }: { rows: BracketRow[] }) {
   );
 }
 
-export function PicksExplorer({ payload }: { payload: PicksPayload }) {
+export function PicksExplorer({ payload, winnerIds }: { payload: PicksPayload; winnerIds?: string[] }) {
+  const winners = new Set(winnerIds ?? []);
   const tabs: { key: string; label: string; count: number }[] = [
     ...payload.matchPools.map((p) => ({ key: p.key, label: p.label, count: p.users.length })),
     ...(payload.groups.length ? [{ key: "GROUPS", label: "Fase de Grupos", count: new Set(payload.groups.flatMap((g) => g.rows.map((r) => r.user.id))).size }] : []),
@@ -230,6 +245,7 @@ export function PicksExplorer({ payload }: { payload: PicksPayload }) {
   const activePool = payload.matchPools.find((p) => p.key === tab);
 
   return (
+    <WinnersContext.Provider value={winners}>
     <div>
       <div className="flex flex-wrap gap-1.5 mb-4">
         {tabs.map((t) => {
@@ -260,5 +276,6 @@ export function PicksExplorer({ payload }: { payload: PicksPayload }) {
         <span className="inline-block w-3 h-3 rounded bg-gray-100 align-middle ml-3 mr-1" /> sin calificar
       </p>
     </div>
+    </WinnersContext.Provider>
   );
 }

@@ -5,7 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import { Leaderboard } from "@/components/Leaderboard";
-import { getModuleAccess, getGroupQuinielaRanks, isLocked, getQuinielaLeaderboard } from "@/lib/module-access";
+import { getModuleAccess, getGroupQuinielaRanks, isLocked, getQuinielaLeaderboard, getLastJornadaWinners } from "@/lib/module-access";
 import { GROUP_MATCH_QUINIELAS, MODULE_META } from "@/lib/modules";
 import { Module, Stage } from "@/generated/prisma/client";
 import { MatchCard } from "../MatchCard";
@@ -63,6 +63,7 @@ export default async function QuinielaDetailPage({
     const activeStage = (stages.includes(stageParam as Stage) ? stageParam : stages[0]) as Stage ?? "R32";
     const filtered = covered.filter((m) => m.stage === activeStage);
     const participants = await getQuinielaLeaderboard("MATCHES");
+    const winnerIds = [...(await getLastJornadaWinners())];
 
     return (
       <div className="app-shell min-h-screen text-white">
@@ -97,7 +98,7 @@ export default async function QuinielaDetailPage({
             })}
             {filtered.length === 0 && <p className="text-slate-600 text-sm col-span-2 text-center py-10">Sin partidos en esta fase.</p>}
           </div>
-          <Leaderboard rows={participants} currentUserId={userId} />
+          <Leaderboard rows={participants} currentUserId={userId} winnerIds={winnerIds} />
         </div>
         <BottomNav />
       </div>
@@ -106,7 +107,7 @@ export default async function QuinielaDetailPage({
 
   // ── Quiniela de jornada (bolsa) ────────────────────────────────
   const pool = GROUP_MATCH_QUINIELAS.find((q) => q.module === mod)!;
-  const [matches, ranks, participants] = await Promise.all([
+  const [matches, ranks, participants, winners] = await Promise.all([
     prisma.match.findMany({
       where: { stage: "GROUP", matchNumber: { gte: pool.min, lte: pool.max } },
       orderBy: { matchNumber: "asc" },
@@ -118,7 +119,9 @@ export default async function QuinielaDetailPage({
     }),
     getGroupQuinielaRanks(userId),
     getQuinielaLeaderboard(mod),
+    getLastJornadaWinners(),
   ]);
+  const winnerIds = [...winners];
 
   const lockMs = matches.length ? Math.min(...matches.map((m) => m.scheduledAt.getTime())) : 0;
   const lockDate = new Date(lockMs);
@@ -152,7 +155,7 @@ export default async function QuinielaDetailPage({
             }))}
           />
         )}
-        {matches.length > 0 && <Leaderboard rows={participants} currentUserId={userId} />}
+        {matches.length > 0 && <Leaderboard rows={participants} currentUserId={userId} winnerIds={winnerIds} />}
       </div>
       <BottomNav />
     </div>

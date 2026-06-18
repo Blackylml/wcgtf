@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Crown } from "lucide-react";
+import { WinnerStar } from "@/components/WinnerStar";
 
 export type Standing = {
   id: string;
@@ -86,9 +87,10 @@ function pickDefault(rows: Standing[]): TabKey {
   return (any?.key ?? TABS[0].key) as TabKey;
 }
 
-export function StandingsTable({ standings, currentUserId }: { standings: Standing[]; currentUserId: string }) {
+export function StandingsTable({ standings, currentUserId, winnerIds }: { standings: Standing[]; currentUserId: string; winnerIds?: string[] }) {
   const [tab, setTab] = useState<TabKey>(() => pickDefault(standings));
   const active = TABS.find((t) => t.key === tab)!;
+  const winners = new Set(winnerIds ?? []);
 
   const sorted = standings.filter(active.has).sort((a, b) => active.metric(b) - active.metric(a) || b.total - a.total);
   const podium = sorted.slice(0, 3);
@@ -131,8 +133,9 @@ export function StandingsTable({ standings, currentUserId }: { standings: Standi
                   {isGold && <Crown size={16} className="text-amber-300 -mb-0.5" />}
                   <Avatar name={u.name} image={u.image} size={isGold ? "xl" : "lg"} />
                   <span className={`font-display font-extrabold tabular-nums ${PODIUM_SIZES[i]} ${PODIUM_COLORS[i]}`}>{active.metric(u)}</span>
-                  <span className={`text-xs font-semibold truncate max-w-[72px] text-center ${isMe ? "text-green-400" : "text-white"}`}>
+                  <span className={`text-xs font-semibold truncate max-w-[72px] text-center flex items-center gap-1 justify-center ${isMe ? "text-green-400" : "text-white"}`}>
                     {u.name.split(" ")[0]}
+                    {winners.has(u.id) && <WinnerStar size={11} />}
                   </span>
                   <div className={`flex items-center justify-center rounded-t-xl text-xs font-extrabold text-white w-16 ${PODIUM_BAR[i]}`}>
                     {i + 1}
@@ -164,6 +167,7 @@ export function StandingsTable({ standings, currentUserId }: { standings: Standi
                     <div className="flex items-center gap-2 min-w-0">
                       <Avatar name={u.name} image={u.image} />
                       <span className="font-medium text-white truncate">{displayName(u.name)}</span>
+                      {winners.has(u.id) && <WinnerStar />}
                       {isMe && <span className="text-[10px] font-semibold text-green-400 shrink-0">tú</span>}
                     </div>
                   </td>

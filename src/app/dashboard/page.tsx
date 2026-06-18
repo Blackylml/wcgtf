@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { SpecialCategory } from "@/generated/prisma/client";
 import { Check, X, Clock } from "lucide-react";
 import { StandingsTable } from "./StandingsTable";
+import { getLastJornadaWinners } from "@/lib/module-access";
+import { WinnerStar } from "@/components/WinnerStar";
 
 const SPECIAL_LABELS: Record<SpecialCategory, string> = {
   TOP_SCORER: "Goleador",
@@ -112,6 +114,8 @@ export default async function DashboardPage() {
   const participants = standings.filter((u) => u.hasAny);
   const myRank = participants.findIndex((u) => u.id === userId) + 1;
   const myStats = standings.find((u) => u.id === userId);
+  const winnerIds = [...(await getLastJornadaWinners())];
+  const iAmWinner = winnerIds.includes(userId);
 
   const groupBetMap = groupBets.reduce((acc, b) => {
     const k = b.groupPool.name;
@@ -133,7 +137,9 @@ export default async function DashboardPage() {
           <div className="absolute inset-0 stadium-lines" />
           <div className="relative p-5 sm:p-6 flex items-end justify-between">
             <div>
-              <p className="text-[11px] font-bold text-green-400 uppercase tracking-[0.18em] mb-2">Mi posición</p>
+              <p className="text-[11px] font-bold text-green-400 uppercase tracking-[0.18em] mb-2 flex items-center gap-1.5">
+                Mi posición {iAmWinner && <WinnerStar size={13} />}
+              </p>
               <p className="font-display text-6xl font-extrabold text-white leading-none tabular-nums">
                 #{myRank || "—"}
               </p>
@@ -147,7 +153,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Ranking + podio por apuesta (pestañas) */}
-        <StandingsTable standings={standings} currentUserId={userId} />
+        <StandingsTable standings={standings} currentUserId={userId} winnerIds={winnerIds} />
 
         {/* My bets */}
         <div className="grid grid-cols-1 gap-3">

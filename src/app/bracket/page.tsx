@@ -5,7 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { PageTitle } from "@/components/PageTitle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import { Leaderboard } from "@/components/Leaderboard";
-import { getModuleAccess, getQuinielaLeaderboard } from "@/lib/module-access";
+import { getModuleAccess, getQuinielaLeaderboard, getLastJornadaWinners } from "@/lib/module-access";
 import { MODULE_META } from "@/lib/modules";
 import { BracketForm } from "./BracketForm";
 import { BracketCancel } from "./BracketBetStatus";
@@ -39,6 +39,7 @@ export default async function BracketPage() {
     getModuleAccess(userId, "BRACKET"),
   ]);
   const participants = await getQuinielaLeaderboard("BRACKET");
+  const winnerIds = [...(await getLastJornadaWinners())];
 
   const gate = (
     <ModuleEntryGate
@@ -132,7 +133,7 @@ export default async function BracketPage() {
           {bracketSession?.isOpen && <BracketCancel />}
         </div>
 
-        <Leaderboard rows={participants} currentUserId={userId} />
+        <Leaderboard rows={participants} currentUserId={userId} winnerIds={winnerIds} />
       </Shell>
     );
   }
@@ -172,7 +173,7 @@ export default async function BracketPage() {
         </div>
       )}
 
-      <Leaderboard rows={participants} currentUserId={userId} />
+      <Leaderboard rows={participants} currentUserId={userId} winnerIds={winnerIds} />
     </Shell>
   );
 }
