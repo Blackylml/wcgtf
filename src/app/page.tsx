@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { NextMatchHero, type PickPeople } from "@/components/NextMatchHero";
-import { getApprovedModules } from "@/lib/module-access";
+import { getApprovedModules, getGroupQuinielaRanks } from "@/lib/module-access";
+import { GROUP_MATCH_QUINIELAS } from "@/lib/modules";
+import { QuinielaPositionCard, type QuinielaSlot } from "@/components/QuinielaPositionCard";
 import Link from "next/link";
 import {
   LayoutGrid, CalendarDays, Trophy, Star, ArrowRight, BarChart3,
@@ -122,13 +124,26 @@ export default async function HomePage() {
     }
   }
 
+  // Quiniela activa: la jornada cuyo último partido iniciado es la más reciente.
+  const lastStarted = await prisma.match.findFirst({
+    where: { stage: "GROUP", scheduledAt: { lte: now } },
+    orderBy: { matchNumber: "desc" },
+    select: { matchNumber: true },
+  });
+  const lastNum = lastStarted?.matchNumber ?? 0;
+  const activeMin = lastNum > 0
+    ? GROUP_MATCH_QUINIELAS.findLast((q) => q.min <= lastNum)?.min ?? GROUP_MATCH_QUINIELAS[0].min
+    : GROUP_MATCH_QUINIELAS[0].min;
+  const activeModuleKeys = new Set(GROUP_MATCH_QUINIELAS.filter((q) => q.min === activeMin).map((q) => q.module));
+
   // User quick stats
-  const [matchBetsCorrect, groupBetsCorrect, specialBetsCorrect, bracketBet, validModules] = await Promise.all([
+  const [matchBetsCorrect, groupBetsCorrect, specialBetsCorrect, bracketBet, validModules, quinielaRanks] = await Promise.all([
     prisma.matchBet.findMany({ where: { userId, isCorrect: true }, select: { paymentId: true, poolModule: true, payment: { select: { status: true } } } }),
     prisma.groupBet.count({ where: { userId, isCorrect: true } }),
     prisma.specialBet.count({ where: { userId, isCorrect: true } }),
     prisma.bracketBet.findFirst({ where: { userId }, select: { score: true } }),
     getApprovedModules(userId),
+    getGroupQuinielaRanks(userId),
   ]);
 
   // Solo cuentan los aciertos de bolsas de quiniela aprobadas (las apuestas individuales van aparte).
@@ -139,6 +154,11 @@ export default async function HomePage() {
     (validModules.has("GROUPS") ? groupBetsCorrect : 0) +
     (validModules.has("SPECIALS") ? specialBetsCorrect : 0) +
     (validModules.has("BRACKET") ? (bracketBet?.score ?? 0) : 0);
+
+  // Slots de quiniela activa donde el usuario participa
+  const activeSlots: QuinielaSlot[] = GROUP_MATCH_QUINIELAS
+    .filter((q) => activeModuleKeys.has(q.module) && quinielaRanks[q.module] != null)
+    .map((q) => ({ label: q.label, ...quinielaRanks[q.module]! }));
 
   const homeName = nextMatch?.homeTeam?.name ?? nextMatch?.homeLabel ?? "Por definir";
   const awayName = nextMatch?.awayTeam?.name ?? nextMatch?.awayLabel ?? "Por definir";
@@ -165,29 +185,33 @@ export default async function HomePage() {
           />
         )}
 
-        {/* ── Mis puntos ───────────────────────────────────────────── */}
-        <section
-          className="animate-rise flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 sm:p-5"
-          style={{ animationDelay: "80ms" }}
-        >
-          <div className="flex items-center gap-4">
-            <span className="grid place-items-center w-12 h-12 rounded-full bg-green-400/10 ring-1 ring-green-400/30 halo-green">
-              <Star size={22} className="text-green-400" strokeWidth={2} />
-            </span>
-            <div>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.16em]">Mis puntos</p>
-              <p className="font-display text-4xl font-extrabold text-white leading-none mt-1 tabular-nums">{totalPts}</p>
-            </div>
-          </div>
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 text-sm font-semibold text-slate-200 border border-white/12 bg-white/[0.03] rounded-full pl-4 pr-3 py-2.5 hover:bg-white/[0.07] hover:border-white/20 transition-colors"
+        {/* ── Posición en quiniela activa (o puntos totales si no hay) ── */}
+        {activeSlots.length > 0 ? (
+          <QuinielaPositionCard slots={activeSlots} />
+        ) : (
+          <section
+            className="animate-rise flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 sm:p-5"
+            style={{ animationDelay: "80ms" }}
           >
-            <BarChart3 size={15} className="text-green-400" />
-            Ver tabla
-            <ArrowRight size={14} className="text-slate-400" />
-          </Link>
-        </section>
+            <div className="flex items-center gap-4">
+              <span className="grid place-items-center w-12 h-12 rounded-full bg-green-400/10 ring-1 ring-green-400/30 halo-green">
+                <Star size={22} className="text-green-400" strokeWidth={2} />
+              </span>
+              <div>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.16em]">Mis puntos</p>
+                <p className="font-display text-4xl font-extrabold text-white leading-none mt-1 tabular-nums">{totalPts}</p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 text-sm font-semibold text-slate-200 border border-white/12 bg-white/[0.03] rounded-full pl-4 pr-3 py-2.5 hover:bg-white/[0.07] hover:border-white/20 transition-colors"
+            >
+              <BarChart3 size={15} className="text-green-400" />
+              Ver tabla
+              <ArrowRight size={14} className="text-slate-400" />
+            </Link>
+          </section>
+        )}
 
         {/* ── Módulos (2×2) ────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
