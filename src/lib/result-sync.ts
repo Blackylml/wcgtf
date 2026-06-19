@@ -69,6 +69,17 @@ export async function syncResults(
     // Orientamos el marcador por CÓDIGO de equipo (abreviatura ESPN = Team.code), no por posición.
     const ourHome = m.homeTeam?.code ?? null;
     const ourAway = m.awayTeam?.code ?? null;
+
+    // GUARD DE INTEGRIDAD: si conocemos ambos códigos, el fixture DEBE ser de
+    // estos dos equipos. Evita escribir el marcador de otro partido cuando el
+    // externalId quedó mal mapeado (ej. el 1-0 de MEX-KOR en USA-AUS).
+    if (ourHome && ourAway) {
+      const sameTeams =
+        (f.homeAbbr === ourHome && f.awayAbbr === ourAway) ||
+        (f.homeAbbr === ourAway && f.awayAbbr === ourHome);
+      if (!sameTeams) continue;
+    }
+
     const reversed = !!ourHome && !!ourAway && f.homeAbbr === ourAway && f.awayAbbr === ourHome;
     const hs = reversed ? f.awayGoals : f.homeGoals;
     const as = reversed ? f.homeGoals : f.awayGoals;

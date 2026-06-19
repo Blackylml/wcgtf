@@ -51,6 +51,15 @@ export async function GET(req: Request) {
     }
     if (!f) return NextResponse.json({ available: false });
 
+    // GUARD DE INTEGRIDAD: el fixture debe ser de estos dos equipos. Si el
+    // externalId/fallback apunta a otro partido, no mostramos ni guardamos nada.
+    if (ourHome && ourAway) {
+      const sameTeams =
+        (f.homeAbbr === ourHome && f.awayAbbr === ourAway) ||
+        (f.homeAbbr === ourAway && f.awayAbbr === ourHome);
+      if (!sameTeams) return NextResponse.json({ available: false });
+    }
+
     const reversed = !!ourHome && !!ourAway && f.homeAbbr === ourAway && f.awayAbbr === ourHome;
     const homeGoals = reversed ? f.awayGoals : f.homeGoals;
     const awayGoals = reversed ? f.homeGoals : f.awayGoals;

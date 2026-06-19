@@ -1,25 +1,34 @@
-const CACHE = 'wcgtf-v1';
+const CACHE = 'wcgtf-v2';
 
-self.addEventListener('install', (e) => {
+self.addEventListener('install', () => {
   self.skipWaiting();
-  e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(['/']))
-  );
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    )
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
+// Network-first SIEMPRE (el HUD debe estar fresco). Solo guardamos una copia de
+// las navegaciones como respaldo offline; nunca servimos una página vieja si hay red.
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') return;
-  if (!e.request.url.startsWith('http')) return;
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  if (!req.url.startsWith('http')) return;
+
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+    fetch(req)
+      .then((res) => {
+        if (req.mode === 'navigate' && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        }
+        return res;
+      })
+      .catch(() => caches.match(req).then((m) => m || caches.match('/')))
   );
 });

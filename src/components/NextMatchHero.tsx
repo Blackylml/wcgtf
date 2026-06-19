@@ -149,13 +149,15 @@ export function NextMatchHero({
   }, [live, matchId, router]);
 
   // Marcador a mostrar: el de la API si está disponible, si no el guardado en BD.
-  const hasApiScore = live?.available && live.homeGoals != null && live.awayGoals != null;
-  const homeScore = hasApiScore ? live!.homeGoals! : initialHomeScore;
-  const awayScore = hasApiScore ? live!.awayGoals! : initialAwayScore;
-  const showScore = homeScore != null && awayScore != null;
+  // Nunca mostramos marcador ni "Finalizado" antes del saque, aunque la BD tenga
+  // datos (defensa contra un resultado mal guardado en un partido futuro).
+  const hasApiScore = started && live?.available && live.homeGoals != null && live.awayGoals != null;
+  const homeScore = hasApiScore ? live!.homeGoals! : started ? initialHomeScore : null;
+  const awayScore = hasApiScore ? live!.awayGoals! : started ? initialAwayScore : null;
+  const showScore = started && homeScore != null && awayScore != null;
 
-  const isLive = live?.available && live.state === "in";
-  const isFinal = (live?.available && live.state === "post") || (!isLive && initialHomeScore != null);
+  const isLive = started && live?.available && live.state === "in";
+  const isFinal = started && ((live?.available && live.state === "post") || (!isLive && initialHomeScore != null));
 
   const label = isLive ? "En vivo" : isFinal ? "Finalizado" : started ? "En juego" : "Próximo partido";
   const labelColor = isLive ? "text-red-400" : isFinal ? "text-slate-400" : "text-green-400";
