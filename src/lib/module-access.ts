@@ -77,7 +77,7 @@ const STAR_JORNADAS: { key: string; label: string; range: [number, number]; pool
   { key: "j3", label: "Jornada 3", range: [49, 72], pools: ["MATCHES_G3"] },
 ];
 
-export type LastJornada = { key: string; label: string; winners: { id: string; name: string }[] };
+export type LastJornada = { key: string; label: string; winners: { id: string; name: string; image: string | null }[] };
 
 /**
  * Info de la "jornada pasada" = la última jornada de grupos con TODOS sus partidos
@@ -97,15 +97,15 @@ export async function getLastJornadaInfo(): Promise<LastJornada | null> {
   }
   if (!target) return null;
 
-  const winners = new Map<string, string>(); // id -> nombre
+  const winners = new Map<string, { name: string; image: string | null }>();
   for (const pool of target.pools) {
     const rows = await getQuinielaLeaderboard(pool);
     const top = rows[0]?.points ?? 0;
     if (top <= 0) continue;
-    for (const r of rows) if (r.points === top) winners.set(r.id, r.name);
+    for (const r of rows) if (r.points === top) winners.set(r.id, { name: r.name, image: r.image });
   }
   if (winners.size === 0) return null;
-  return { key: target.key, label: target.label, winners: [...winners].map(([id, name]) => ({ id, name })) };
+  return { key: target.key, label: target.label, winners: [...winners].map(([id, w]) => ({ id, ...w })) };
 }
 
 /**

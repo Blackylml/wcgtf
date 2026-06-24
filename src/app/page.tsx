@@ -177,7 +177,7 @@ export default async function HomePage() {
         <WinnerPopup
           jornadaKey={lastJornada.key}
           label={lastJornada.label}
-          winnerNames={lastJornada.winners.map((w) => w.name)}
+          winners={lastJornada.winners}
           amIWinner={iWonLastJornada}
           initial={jornadaReactions}
         />

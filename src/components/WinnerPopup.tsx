@@ -1,37 +1,60 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Trophy, X } from "lucide-react";
 import { reactToJornada, type ReactionState } from "@/app/jornada-actions";
 
 const CONFETTI = ["#22e07a", "#3b82f6", "#fbbf24", "#a855f7", "#f43f5e", "#ffffff"];
+const BURST_COUNT = 16;
 
-function firstNames(names: string[]) {
-  const fn = names.map((n) => n.split(" ")[0]);
-  if (fn.length <= 1) return fn[0] ?? "";
-  if (fn.length === 2) return `${fn[0]} y ${fn[1]}`;
-  return `${fn.slice(0, -1).join(", ")} y ${fn[fn.length - 1]}`;
+type Winner = { id: string; name: string; image: string | null };
+
+/** Nombre + apellido (primeras dos palabras). */
+function displayName(name: string) {
+  return name.split(" ").slice(0, 2).join(" ");
 }
 
-/**
- * Anuncio del ganador de la jornada pasada — se muestra a TODOS una vez por
- * jornada (recordado en localStorage), con reacciones (boo / vamos) en vivo.
- */
+function Avatar({ w, size = 44 }: { w: Winner; size?: number }) {
+  const initials = w.name.split(" ").slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+  if (w.image) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- foto de perfil de Google
+      <img
+        src={w.image}
+        alt={w.name}
+        referrerPolicy="no-referrer"
+        style={{ width: size, height: size }}
+        className="rounded-full object-cover ring-2 ring-amber-400/50 shrink-0"
+      />
+    );
+  }
+  return (
+    <span
+      style={{ width: size, height: size }}
+      className="grid place-items-center rounded-full bg-white/[0.08] ring-2 ring-amber-400/50 text-sm font-bold text-slate-200 shrink-0"
+    >
+      {initials || "?"}
+    </span>
+  );
+}
+
 export function WinnerPopup({
   jornadaKey,
   label,
-  winnerNames,
+  winners,
   amIWinner,
   initial,
 }: {
   jornadaKey: string;
   label: string;
-  winnerNames: string[];
+  winners: Winner[];
   amIWinner: boolean;
   initial: ReactionState;
 }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<ReactionState>(initial);
+  const [burst, setBurst] = useState<{ id: number; emoji: string } | null>(null);
+  const burstId = useRef(0);
   const [pending, start] = useTransition();
 
   useEffect(() => {
@@ -41,6 +64,13 @@ export function WinnerPopup({
       setOpen(true);
     }
   }, [jornadaKey]);
+
+  // Limpia el estallido cuando termina la animación.
+  useEffect(() => {
+    if (!burst) return;
+    const t = setTimeout(() => setBurst(null), 1300);
+    return () => clearTimeout(t);
+  }, [burst]);
 
   function close() {
     try {
@@ -52,7 +82,9 @@ export function WinnerPopup({
   }
 
   function react(type: "boo" | "cheer") {
-    // Optimista: refleja el cambio al instante.
+    burstId.current += 1;
+    setBurst({ id: burstId.current, emoji: type === "boo" ? "👎" : "🔥" });
+
     setState((s) => {
       const counts = { ...s.counts };
       if (s.myReaction === "boo") counts.boo = Math.max(0, counts.boo - 1);
@@ -70,6 +102,7 @@ export function WinnerPopup({
 
   return (
     <div className="fixed inset-0 z-[100] grid place-items-center p-5 bg-black/70 backdrop-blur-sm animate-fade" onClick={close}>
+      {/* Confeti de fondo */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {Array.from({ length: 36 }).map((_, i) => (
           <span
@@ -84,6 +117,33 @@ export function WinnerPopup({
           />
         ))}
       </div>
+
+      {/* Estallido de emojis al reaccionar */}
+      {burst && (
+        <div key={burst.id} className="pointer-events-none fixed inset-0 z-[110] grid place-items-center overflow-hidden">
+          {Array.from({ length: BURST_COUNT }).map((_, i) => {
+            const tx = ((i / (BURST_COUNT - 1)) * 2 - 1) * 44; // -44vw .. 44vw
+            const peak = -(28 + (i % 5) * 9); // sube
+            const rot = (i % 2 ? 1 : -1) * (120 + i * 28);
+            return (
+              <span
+                key={i}
+                className="absolute text-3xl animate-emoji-burst"
+                style={
+                  {
+                    "--tx": `${tx}vw`,
+                    "--peak": `${peak}vh`,
+                    "--rot": `${rot}deg`,
+                    animationDelay: `${(i % 6) * 30}ms`,
+                  } as React.CSSProperties
+                }
+              >
+                {burst.emoji}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       <div
         className="relative w-full max-w-sm rounded-3xl border border-amber-400/30 bg-gradient-to-b from-[#10243a] to-[#0a1422] p-7 text-center shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)] animate-pop"
@@ -101,24 +161,30 @@ export function WinnerPopup({
           <Trophy size={40} className="text-amber-400" strokeWidth={1.6} />
         </span>
 
-        <p className="text-[11px] font-bold text-amber-300 uppercase tracking-[0.24em] mb-1">
+        <p className="text-[11px] font-bold text-amber-300 uppercase tracking-[0.24em] mb-3">
           {amIWinner ? "¡Felicidades!" : `Ganador · ${label}`}
         </p>
 
-        {amIWinner ? (
-          <h2 className="font-display text-3xl font-extrabold text-white leading-tight">
-            Ganaste la <span className="text-gradient-brand">{label}</span>
-          </h2>
-        ) : (
-          <h2 className="font-display text-2xl font-extrabold text-white leading-tight">
-            <span className="text-gradient-brand">{firstNames(winnerNames)}</span>
-            <br />
-            {winnerNames.length > 1 ? "ganaron" : "ganó"} la {label}
-          </h2>
-        )}
+        {/* Ganador(es): foto + apellido */}
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3 mb-3">
+          {winners.map((w) => (
+            <div key={w.id} className="flex flex-col items-center gap-1.5 w-[88px]">
+              <Avatar w={w} />
+              <span className="text-xs font-semibold text-white leading-tight text-center truncate w-full">{displayName(w.name)}</span>
+            </div>
+          ))}
+        </div>
 
-        <p className="text-sm text-slate-400 mt-3 leading-relaxed">
-          {amIWinner ? "Quedaste en lo más alto del ranking. 🏆 ¡A defenderlo!" : "¿Qué opinas? Déjale tu reacción 👇"}
+        <h2 className="font-display text-xl font-extrabold text-white leading-tight">
+          {amIWinner ? (
+            <>Ganaste la <span className="text-gradient-brand">{label}</span></>
+          ) : (
+            <>{winners.length > 1 ? "Ganaron" : "Ganó"} la <span className="text-gradient-brand">{label}</span></>
+          )}
+        </h2>
+
+        <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+          {amIWinner ? "Quedaste en lo más alto del ranking. 🏆" : "¿Qué opinas? Déjale tu reacción 👇"}
         </p>
 
         {/* Reacciones */}

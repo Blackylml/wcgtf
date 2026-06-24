@@ -252,6 +252,15 @@
 }
 .animate-confetti { animation: confettiFall linear infinite; }
 
+/* Estallido de emojis (saltan tipo confeti) al reaccionar */
+@keyframes emojiBurst {
+  0%   { transform: translate(0, 0) scale(0.4) rotate(0); opacity: 0; }
+  12%  { opacity: 1; }
+  35%  { transform: translate(calc(var(--tx) * 0.55), var(--peak)) scale(1.15) rotate(calc(var(--rot) * 0.4)); opacity: 1; }
+  100% { transform: translate(var(--tx), 18vh) scale(0.85) rotate(var(--rot)); opacity: 0; }
+}
+.animate-emoji-burst { animation: emojiBurst 1.25s cubic-bezier(0.22, 0.7, 0.3, 1) forwards; }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise, .animate-halo-pulse, .animate-floaty, .animate-live-dot,
   .animate-fade, .animate-pop, .animate-trophy { animation: none; opacity: 1; }
