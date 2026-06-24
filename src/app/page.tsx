@@ -7,6 +7,7 @@ import { getApprovedModules, getGroupQuinielaRanks, getLastJornadaInfo } from "@
 import { GROUP_MATCH_QUINIELAS } from "@/lib/modules";
 import { QuinielaPositionCard, type QuinielaSlot } from "@/components/QuinielaPositionCard";
 import { WinnerPopup } from "@/components/WinnerPopup";
+import { getJornadaReactions } from "@/app/jornada-actions";
 import Link from "next/link";
 import {
   LayoutGrid, CalendarDays, Trophy, Star, ArrowRight, BarChart3,
@@ -148,7 +149,8 @@ export default async function HomePage() {
     getLastJornadaInfo(),
   ]);
 
-  const iWonLastJornada = !!lastJornada && lastJornada.winnerIds.includes(userId);
+  const iWonLastJornada = !!lastJornada && lastJornada.winners.some((w) => w.id === userId);
+  const jornadaReactions = lastJornada ? await getJornadaReactions(lastJornada.key) : null;
 
   // Solo cuentan los aciertos de bolsas de quiniela aprobadas (las apuestas individuales van aparte).
   const matchPts = matchBetsCorrect.filter((b) => b.poolModule != null && validModules.has(b.poolModule)).length;
@@ -171,8 +173,14 @@ export default async function HomePage() {
     <div className="app-shell min-h-screen text-white">
       <AppHeader />
 
-      {iWonLastJornada && lastJornada && (
-        <WinnerPopup jornadaKey={lastJornada.key} label={lastJornada.label} />
+      {lastJornada && jornadaReactions && (
+        <WinnerPopup
+          jornadaKey={lastJornada.key}
+          label={lastJornada.label}
+          winnerNames={lastJornada.winners.map((w) => w.name)}
+          amIWinner={iWonLastJornada}
+          initial={jornadaReactions}
+        />
       )}
 
       <div className="relative z-10 max-w-2xl mx-auto px-4 pt-5 pb-28 space-y-4">

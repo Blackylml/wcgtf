@@ -77,7 +77,7 @@ const STAR_JORNADAS: { key: string; label: string; range: [number, number]; pool
   { key: "j3", label: "Jornada 3", range: [49, 72], pools: ["MATCHES_G3"] },
 ];
 
-export type LastJornada = { key: string; label: string; winnerIds: string[] };
+export type LastJornada = { key: string; label: string; winners: { id: string; name: string }[] };
 
 /**
  * Info de la "jornada pasada" = la última jornada de grupos con TODOS sus partidos
@@ -97,23 +97,23 @@ export async function getLastJornadaInfo(): Promise<LastJornada | null> {
   }
   if (!target) return null;
 
-  const winners = new Set<string>();
+  const winners = new Map<string, string>(); // id -> nombre
   for (const pool of target.pools) {
     const rows = await getQuinielaLeaderboard(pool);
     const top = rows[0]?.points ?? 0;
     if (top <= 0) continue;
-    for (const r of rows) if (r.points === top) winners.add(r.id);
+    for (const r of rows) if (r.points === top) winners.set(r.id, r.name);
   }
   if (winners.size === 0) return null;
-  return { key: target.key, label: target.label, winnerIds: [...winners] };
+  return { key: target.key, label: target.label, winners: [...winners].map(([id, name]) => ({ id, name })) };
 }
 
 /**
- * Ganador(es) de la jornada pasada como Set (para la estrella en toda la app).
+ * Ganador(es) de la jornada pasada como Set de ids (para la estrella en toda la app).
  */
 export async function getLastJornadaWinners(): Promise<Set<string>> {
   const info = await getLastJornadaInfo();
-  return new Set(info?.winnerIds ?? []);
+  return new Set(info?.winners.map((w) => w.id) ?? []);
 }
 
 export type QuinielaStanding = { rank: number; total: number; points: number; ranked: boolean };

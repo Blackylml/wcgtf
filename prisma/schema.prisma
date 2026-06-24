@@ -25,6 +25,21 @@ model User {
   bracketBets  BracketBet[]
   specialBets  SpecialBet[]
   payments     Payment[]
+  jornadaReactions JornadaReaction[]
+}
+
+// Reacciones (boo / vamos) al ganador de una jornada. Una por usuario por jornada.
+model JornadaReaction {
+  id         String   @id @default(cuid())
+  jornadaKey String   // "j1", "j2", "j3"
+  userId     String
+  type       String   // "boo" | "cheer"
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([jornadaKey, userId])
+  @@index([jornadaKey])
 }
 
 enum Role {
