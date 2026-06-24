@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { NextMatchHero, type PickPeople } from "@/components/NextMatchHero";
-import { getApprovedModules, getGroupQuinielaRanks } from "@/lib/module-access";
+import { getApprovedModules, getGroupQuinielaRanks, getLastJornadaInfo } from "@/lib/module-access";
 import { GROUP_MATCH_QUINIELAS } from "@/lib/modules";
 import { QuinielaPositionCard, type QuinielaSlot } from "@/components/QuinielaPositionCard";
+import { WinnerPopup } from "@/components/WinnerPopup";
 import Link from "next/link";
 import {
   LayoutGrid, CalendarDays, Trophy, Star, ArrowRight, BarChart3,
@@ -137,14 +138,17 @@ export default async function HomePage() {
   const activeModuleKeys = new Set(GROUP_MATCH_QUINIELAS.filter((q) => q.min === activeMin).map((q) => q.module));
 
   // User quick stats
-  const [matchBetsCorrect, groupBetsCorrect, specialBetsCorrect, bracketBet, validModules, quinielaRanks] = await Promise.all([
+  const [matchBetsCorrect, groupBetsCorrect, specialBetsCorrect, bracketBet, validModules, quinielaRanks, lastJornada] = await Promise.all([
     prisma.matchBet.findMany({ where: { userId, isCorrect: true }, select: { paymentId: true, poolModule: true, payment: { select: { status: true } } } }),
     prisma.groupBet.count({ where: { userId, isCorrect: true } }),
     prisma.specialBet.count({ where: { userId, isCorrect: true } }),
     prisma.bracketBet.findFirst({ where: { userId }, select: { score: true } }),
     getApprovedModules(userId),
     getGroupQuinielaRanks(userId),
+    getLastJornadaInfo(),
   ]);
+
+  const iWonLastJornada = !!lastJornada && lastJornada.winnerIds.includes(userId);
 
   // Solo cuentan los aciertos de bolsas de quiniela aprobadas (las apuestas individuales van aparte).
   const matchPts = matchBetsCorrect.filter((b) => b.poolModule != null && validModules.has(b.poolModule)).length;
@@ -166,6 +170,10 @@ export default async function HomePage() {
   return (
     <div className="app-shell min-h-screen text-white">
       <AppHeader />
+
+      {iWonLastJornada && lastJornada && (
+        <WinnerPopup jornadaKey={lastJornada.key} label={lastJornada.label} />
+      )}
 
       <div className="relative z-10 max-w-2xl mx-auto px-4 pt-5 pb-28 space-y-4">
         {/* ── Partido héroe (semi-vivo) ────────────────────────────── */}

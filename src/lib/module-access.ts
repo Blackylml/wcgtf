@@ -71,18 +71,20 @@ export async function getQuinielaLeaderboard(module: Module): Promise<LeaderRow[
 }
 
 // Jornadas de grupos en orden, con sus bolsas. La J2 tiene dos bolsas ($50 y Premio $250).
-const STAR_JORNADAS: { range: [number, number]; pools: Module[] }[] = [
-  { range: [1, 24], pools: ["MATCHES_G1"] },
-  { range: [25, 48], pools: ["MATCHES_G2", "MATCHES_G2B"] },
-  { range: [49, 72], pools: ["MATCHES_G3"] },
+const STAR_JORNADAS: { key: string; label: string; range: [number, number]; pools: Module[] }[] = [
+  { key: "j1", label: "Jornada 1", range: [1, 24], pools: ["MATCHES_G1"] },
+  { key: "j2", label: "Jornada 2", range: [25, 48], pools: ["MATCHES_G2", "MATCHES_G2B"] },
+  { key: "j3", label: "Jornada 3", range: [49, 72], pools: ["MATCHES_G3"] },
 ];
 
+export type LastJornada = { key: string; label: string; winnerIds: string[] };
+
 /**
- * Ganador(es) de la "jornada pasada" = la última jornada de grupos con TODOS sus
- * partidos resueltos. Se marcan con una estrella en toda la app. Maneja empates
- * (puede haber más de un ganador) y, en la J2, ambas bolsas. Temporal/cosmético.
+ * Info de la "jornada pasada" = la última jornada de grupos con TODOS sus partidos
+ * resueltos: su etiqueta y ganador(es) (top de puntos, con empates; en la J2 ambas
+ * bolsas). Devuelve null si aún no hay una jornada completa con puntos.
  */
-export async function getLastJornadaWinners(): Promise<Set<string>> {
+export async function getLastJornadaInfo(): Promise<LastJornada | null> {
   const matches = await prisma.match.findMany({
     where: { stage: "GROUP" },
     select: { matchNumber: true, homeScore: true },
@@ -93,7 +95,7 @@ export async function getLastJornadaWinners(): Promise<Set<string>> {
     const inRange = matches.filter((m) => m.matchNumber >= j.range[0] && m.matchNumber <= j.range[1]);
     if (inRange.length > 0 && inRange.every((m) => m.homeScore !== null)) target = j;
   }
-  if (!target) return new Set();
+  if (!target) return null;
 
   const winners = new Set<string>();
   for (const pool of target.pools) {
@@ -102,7 +104,16 @@ export async function getLastJornadaWinners(): Promise<Set<string>> {
     if (top <= 0) continue;
     for (const r of rows) if (r.points === top) winners.add(r.id);
   }
-  return winners;
+  if (winners.size === 0) return null;
+  return { key: target.key, label: target.label, winnerIds: [...winners] };
+}
+
+/**
+ * Ganador(es) de la jornada pasada como Set (para la estrella en toda la app).
+ */
+export async function getLastJornadaWinners(): Promise<Set<string>> {
+  const info = await getLastJornadaInfo();
+  return new Set(info?.winnerIds ?? []);
 }
 
 export type QuinielaStanding = { rank: number; total: number; points: number; ranked: boolean };
