@@ -60,7 +60,7 @@ export default async function BracketPage() {
           icon={Trophy}
           accent="amber"
           title="Bracket"
-          subtitle="Predice el camino al título desde los Octavos de Final hasta la Gran Final."
+          subtitle="Predice el camino al título desde los Dieciseisavos de Final hasta la Gran Final."
         />
         {gate}
         <div className="animate-rise rounded-2xl border border-white/[0.08] bg-white/[0.025] p-6 text-center">
@@ -170,7 +170,7 @@ export default async function BracketPage() {
         icon={Trophy}
         accent="amber"
         title="Bracket"
-        subtitle="Elige el ganador de cada partido en cascada hasta el campeón."
+        subtitle="Elige el ganador de cada partido desde Dieciseisavos hasta el Campeón."
       />
       {gate}
       {access.entered ? (

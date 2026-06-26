@@ -131,7 +131,7 @@ export default async function PartidosLobby() {
     locked: false,
     lockLabel: "",
     rank: null,
-    subtitle: "Predice el camino al título desde Octavos hasta el Campeón",
+    subtitle: "Predice el camino al título desde Dieciseisavos hasta el Campeón",
   });
 
   return (
