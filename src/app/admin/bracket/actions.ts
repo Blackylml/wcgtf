@@ -17,11 +17,6 @@ export async function toggleBracket(id: string, current: boolean) {
   revalidatePath("/bracket");
 }
 
-export async function setBracketPrice(id: string, price: number) {
-  if (isNaN(price) || price < 0) return;
-  await prisma.bracketSession.update({ where: { id }, data: { price } });
-  revalidatePath("/admin/bracket");
-}
 
 export async function saveBracketConfig(id: string, configJson: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

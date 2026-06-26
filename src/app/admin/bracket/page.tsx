@@ -2,19 +2,15 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  initBracketSession,
-  toggleBracket,
-  setBracketPrice,
-  saveBracketConfig,
-  recalcBracketScores,
-} from "./actions";
+import { initBracketSession, toggleBracket, saveBracketConfig, recalcBracketScores } from "./actions";
 
 export default async function BracketAdminPage() {
-  const session = await prisma.bracketSession.findFirst({
-    include: { bets: { include: { user: { select: { name: true, email: true } } } } },
-  });
+  const [session, moduleSettings] = await Promise.all([
+    prisma.bracketSession.findFirst({
+      include: { bets: { include: { user: { select: { name: true, email: true } } } } },
+    }),
+    prisma.moduleSettings.findUnique({ where: { module: "BRACKET" } }),
+  ]);
 
   const teams = await prisma.team.findMany({
     orderBy: [{ group: "asc" }, { name: "asc" }],
@@ -22,6 +18,9 @@ export default async function BracketAdminPage() {
   });
 
   const config = (session?.config ?? { R32: [] }) as { R32: [string, string][] };
+
+  const entryPrice = Number(moduleSettings?.price ?? 0);
+  const entryOpen = moduleSettings?.entryOpen ?? true;
 
   if (!session) {
     return (
@@ -45,13 +44,33 @@ export default async function BracketAdminPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Bracket Eliminatorias</h1>
 
-      {/* Control */}
+      {/* Estado — dos conceptos separados */}
       <div className="grid grid-cols-3 gap-4 mb-6">
+
+        {/* Entrada / pagos (ModuleSettings) */}
+        <Card>
+          <CardContent className="py-4">
+            <p className="text-sm text-gray-500 mb-1">Entrada (pagos)</p>
+            <div className="flex items-center gap-2 mb-1">
+              <Badge className={entryOpen ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-500"}>
+                {entryOpen ? "Abierta" : "Cerrada"}
+              </Badge>
+              {entryPrice > 0
+                ? <span className="text-sm font-semibold">${entryPrice}</span>
+                : <span className="text-xs text-gray-400">Gratis</span>}
+            </div>
+            <a href="/admin/precios" className="text-xs text-blue-600 hover:underline">
+              Cambiar precio / estado →
+            </a>
+          </CardContent>
+        </Card>
+
+        {/* Formulario de picks (BracketSession) */}
         <Card>
           <CardContent className="py-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Estado</p>
-              <Badge className={session.isOpen ? "bg-green-100 text-green-800 mt-1" : "bg-gray-100 text-gray-500 mt-1"}>
+              <p className="text-sm text-gray-500 mb-1">Formulario (picks)</p>
+              <Badge className={session.isOpen ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-500"}>
                 {session.isOpen ? "Abierto" : "Cerrado"}
               </Badge>
             </div>
@@ -64,22 +83,7 @@ export default async function BracketAdminPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="py-4">
-            <form action={async (fd) => {
-              "use server";
-              await setBracketPrice(session.id, parseFloat(fd.get("price") as string));
-            }} className="flex items-center gap-2">
-              <div className="flex-1">
-                <p className="text-sm text-gray-500 mb-1">Precio (MXN)</p>
-                <Input name="price" type="number" min="0" step="0.01"
-                  defaultValue={Number(session.price)} className="h-8 text-sm" />
-              </div>
-              <Button type="submit" size="sm" variant="outline" className="h-8 text-xs mt-5">OK</Button>
-            </form>
-          </CardContent>
-        </Card>
-
+        {/* Participantes */}
         <Card>
           <CardContent className="py-4 flex items-center justify-between">
             <div>
