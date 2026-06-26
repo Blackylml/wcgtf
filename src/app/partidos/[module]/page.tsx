@@ -112,6 +112,7 @@ export default async function QuinielaDetailPage({
   // ── Quiniela por ronda eliminatoria (KO_R32 … KO_FINAL) ───────
   const koQ = KO_QUINIELAS.find((q) => q.module === mod);
   if (koQ) {
+    if (!koQ.available) redirect("/partidos");
     const [matches, participants, winners] = await Promise.all([
       prisma.match.findMany({
         where: { stage: { in: koQ.stages } },

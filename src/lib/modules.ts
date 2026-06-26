@@ -33,13 +33,13 @@ export const GROUP_MATCH_QUINIELAS: { module: Module; label: string; min: number
   { module: "MATCHES_G3",  label: "Jornada 3",            min: 49, max: 72 },
 ];
 
-/** Quinielas por ronda eliminatoria. */
-export const KO_QUINIELAS: { module: Module; label: string; stages: Stage[] }[] = [
-  { module: "KO_R32",   label: "Dieciseisavos",   stages: ["R32"]           },
-  { module: "KO_R16",   label: "Octavos de Final", stages: ["R16"]           },
-  { module: "KO_QF",    label: "Cuartos de Final", stages: ["QF"]            },
-  { module: "KO_SF",    label: "Semifinales",      stages: ["SF"]            },
-  { module: "KO_FINAL", label: "Final",            stages: ["THIRD", "FINAL"]},
+/** Quinielas por ronda eliminatoria. `available` controla si la ronda está abierta al público. */
+export const KO_QUINIELAS: { module: Module; label: string; stages: Stage[]; available: boolean }[] = [
+  { module: "KO_R32",   label: "Dieciseisavos",   stages: ["R32"],            available: true  },
+  { module: "KO_R16",   label: "Octavos de Final", stages: ["R16"],           available: false },
+  { module: "KO_QF",    label: "Cuartos de Final", stages: ["QF"],            available: false },
+  { module: "KO_SF",    label: "Semifinales",      stages: ["SF"],            available: false },
+  { module: "KO_FINAL", label: "Final",            stages: ["THIRD", "FINAL"],available: false },
 ];
 
 /** Rango [min,max] de partidos de una bolsa de jornada (grupos). */

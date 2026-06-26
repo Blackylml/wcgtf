@@ -26,12 +26,31 @@ function statusChip(access: ModuleAccess, locked: boolean) {
 type CardData = {
   href: string; label: string; accent: string; picks: number; total: number;
   access: ModuleAccess; locked: boolean; lockLabel: string; rank: QuinielaStanding | null;
-  subtitle?: string;
+  subtitle?: string; comingSoon?: boolean;
 };
 
 function QuinielaCard({ d, i }: { d: CardData; i: number }) {
-  const chip = statusChip(d.access, d.locked);
+  const chip = d.comingSoon
+    ? { text: "Próximamente", cls: "text-slate-400 bg-white/[0.05] border-white/10" }
+    : statusChip(d.access, d.locked);
   const a = ACCENT[d.accent] ?? ACCENT.blue;
+  if (d.comingSoon) {
+    return (
+      <div
+        style={{ animationDelay: `${i * 50}ms` }}
+        className="animate-rise flex items-center gap-3 rounded-2xl border border-white/[0.05] bg-white/[0.01] p-4 opacity-50 cursor-not-allowed select-none"
+      >
+        <span className={`grid place-items-center w-11 h-11 rounded-2xl ring-1 shrink-0 ${a}`}>
+          <Trophy size={20} strokeWidth={2} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-display font-bold text-white leading-tight">{d.label}</p>
+          <p className="text-[11px] text-slate-500 mt-1">Disponible en la siguiente ronda</p>
+        </div>
+        <span className={`shrink-0 text-[11px] font-semibold rounded-full border px-2.5 py-1 ${chip.cls}`}>{chip.text}</span>
+      </div>
+    );
+  }
   return (
     <Link
       href={d.href}
@@ -90,22 +109,21 @@ export default async function PartidosLobby() {
     }),
   ]);
 
-  const [g1, g2, g2b, g3, koR32, koR16, koQF, koSF, koFinal, ranks] = await Promise.all([
+  const availableKO = KO_QUINIELAS.filter((q) => q.available);
+  const [g1, g2, g2b, g3, ranks, ...koAccesses] = await Promise.all([
     getModuleAccess(userId, "MATCHES_G1"),
     getModuleAccess(userId, "MATCHES_G2"),
     getModuleAccess(userId, "MATCHES_G2B"),
     getModuleAccess(userId, "MATCHES_G3"),
-    getModuleAccess(userId, "KO_R32"),
-    getModuleAccess(userId, "KO_R16"),
-    getModuleAccess(userId, "KO_QF"),
-    getModuleAccess(userId, "KO_SF"),
-    getModuleAccess(userId, "KO_FINAL"),
     getGroupQuinielaRanks(userId),
+    ...availableKO.map((q) => getModuleAccess(userId, q.module)),
   ]);
   const accessByModule: Record<string, ModuleAccess> = {
     MATCHES_G1: g1, MATCHES_G2: g2, MATCHES_G2B: g2b, MATCHES_G3: g3,
-    KO_R32: koR32, KO_R16: koR16, KO_QF: koQF, KO_SF: koSF, KO_FINAL: koFinal,
   };
+  for (let i = 0; i < availableKO.length; i++) {
+    accessByModule[availableKO[i].module] = koAccesses[i];
+  }
 
   const cards: CardData[] = [];
 
@@ -128,6 +146,18 @@ export default async function PartidosLobby() {
 
   // Quinielas por ronda eliminatoria
   for (const koQ of KO_QUINIELAS) {
+    if (!koQ.available) {
+      cards.push({
+        href: `/partidos/${koQ.module}`,
+        label: koQ.label,
+        accent: "amber",
+        picks: 0, total: 0,
+        access: { price: 0, entryOpen: false, paymentStatus: null, entered: false, approved: false },
+        locked: false, lockLabel: "", rank: null,
+        comingSoon: true,
+      });
+      continue;
+    }
     const koMatches = matches.filter((m) => (koQ.stages as string[]).includes(m.stage));
     const access = accessByModule[koQ.module];
     const lockMs = koMatches.length ? Math.min(...koMatches.map((m) => m.scheduledAt.getTime())) : 0;
