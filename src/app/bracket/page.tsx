@@ -52,18 +52,27 @@ export default async function BracketPage() {
     />
   );
 
+  // Bracket todavía no abierto: mostrar preview + gate para pre-venta de cupos
   if (!bracketSession?.isOpen && !userBet) {
     return (
       <Shell>
-        <div className="animate-rise py-16 text-center">
-          <span className="inline-grid place-items-center w-20 h-20 rounded-3xl bg-amber-400/10 ring-1 ring-amber-400/25 halo-amber mb-5">
-            <Trophy size={36} className="text-amber-400" strokeWidth={1.4} />
+        <PageTitle
+          icon={Trophy}
+          accent="amber"
+          title="Bracket"
+          subtitle="Predice el camino al título desde los Octavos de Final hasta la Gran Final."
+        />
+        {gate}
+        <div className="animate-rise rounded-2xl border border-white/[0.08] bg-white/[0.025] p-6 text-center">
+          <span className="inline-grid place-items-center w-16 h-16 rounded-2xl bg-amber-400/10 ring-1 ring-amber-400/20 mb-4 mx-auto">
+            <Trophy size={28} className="text-amber-400" strokeWidth={1.4} />
           </span>
-          <h1 className="font-display text-2xl font-extrabold mb-2">Bracket Eliminatorias</h1>
-          <p className="text-slate-400 text-sm max-w-xs mx-auto leading-relaxed">
-            El bracket se habilitará una vez que termine la fase de grupos y se conozcan las 32 llaves.
+          <p className="text-sm font-semibold text-white mb-1">Próximamente</p>
+          <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+            El bracket se abrirá una vez que terminen los grupos y se conozcan las 32 llaves. ¡Asegura tu lugar ahora!
           </p>
         </div>
+        <Leaderboard rows={participants} currentUserId={userId} winnerIds={winnerIds} />
       </Shell>
     );
   }

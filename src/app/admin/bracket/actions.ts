@@ -43,6 +43,7 @@ export async function recalcBracketScores(sessionId: string) {
   const matchesByStage = await prisma.match.findMany({
     where: { stage: { in: ["R32", "R16", "QF", "SF", "THIRD", "FINAL"] } },
     include: { homeTeam: true, awayTeam: true },
+    orderBy: { matchNumber: "asc" },
   });
 
   // Map matchNumber → winner code

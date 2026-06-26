@@ -100,12 +100,22 @@ export function BracketForm({ config, teams }: { config: BracketConfig; teams: T
   const qfMatchups = Array.from({ length: nQF }, (_, i) => [r16[String(i * 2)] ?? "", r16[String(i * 2 + 1)] ?? ""]);
   const sfMatchups = Array.from({ length: nSF }, (_, i) => [qf[String(i * 2)] ?? "", qf[String(i * 2 + 1)] ?? ""]);
 
+  // Equipos para la final: los 2 ganadores de semis
+  const finalists = Array.from({ length: nSF }, (_, i) => sf[String(i)] ?? "").filter(Boolean);
+  // Equipos para 3er lugar: los 2 perdedores de semis
+  const thirdPlaceTeams = sfMatchups.map(([t1, t2], i) => {
+    const winner = sf[String(i)];
+    if (!winner || (!t1 && !t2)) return "";
+    return winner === t1 ? t2 : t1;
+  }).filter(Boolean);
+
   const total = nR32 + nR16 + nQF + nSF + 2;
   const done = count(r32) + count(r16) + count(qf) + count(sf) + (third ? 1 : 0) + (champion ? 1 : 0);
   const complete = done === total;
 
   async function handleSubmit() {
     if (!complete) { setError(`Faltan ${total - done} selecciones`); return; }
+    if (third === champion) { setError("El campeón y el tercer lugar no pueden ser el mismo equipo"); return; }
     setLoading(true); setError("");
     const result = await createBracketBet({ R32: r32, R16: r16, QF: qf, SF: sf, THIRD: third, FINAL: champion });
     setLoading(false);
@@ -163,8 +173,8 @@ export function BracketForm({ config, teams }: { config: BracketConfig; teams: T
 
       <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.04] p-4 mb-4">
         <p className="text-[11px] text-amber-300/80 uppercase tracking-[0.16em] font-semibold mb-2">Final</p>
-        <FinalPick label="Tercer lugar" options={Object.values(sf)} teamMap={teamMap} value={third} onPick={setThird} />
-        <FinalPick label="Campeón" options={Object.values(sf)} teamMap={teamMap} value={champion} onPick={setChampion} />
+        <FinalPick label="Tercer lugar" options={thirdPlaceTeams} teamMap={teamMap} value={third} onPick={setThird} />
+        <FinalPick label="Campeón" options={finalists} teamMap={teamMap} value={champion} onPick={setChampion} />
       </div>
 
       {error && <p className="text-red-400 text-sm mb-3 text-center">{error}</p>}
