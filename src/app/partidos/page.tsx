@@ -5,7 +5,6 @@ import { BottomNav } from "@/components/BottomNav";
 import { PageTitle } from "@/components/PageTitle";
 import { getModuleAccess, getGroupQuinielaRanks, isLocked, type ModuleAccess, type QuinielaStanding } from "@/lib/module-access";
 import { GROUP_MATCH_QUINIELAS } from "@/lib/modules";
-import { Module } from "@/generated/prisma/client";
 import { MatchCard } from "./MatchCard";
 import { CalendarDays, ChevronRight, Trophy, Clock, Lock, ListChecks, Flame } from "lucide-react";
 import Link from "next/link";
@@ -13,6 +12,7 @@ import Link from "next/link";
 const ACCENT: Record<string, string> = {
   blue: "bg-blue-400/10 ring-blue-400/30 text-blue-400 halo-blue",
   purple: "bg-purple-400/10 ring-purple-400/30 text-purple-400 halo-purple",
+  amber: "bg-amber-400/10 ring-amber-400/30 text-amber-400 halo-amber",
 };
 
 function statusChip(access: ModuleAccess, locked: boolean) {
@@ -26,6 +26,7 @@ function statusChip(access: ModuleAccess, locked: boolean) {
 type CardData = {
   href: string; label: string; accent: string; picks: number; total: number;
   access: ModuleAccess; locked: boolean; lockLabel: string; rank: QuinielaStanding | null;
+  subtitle?: string;
 };
 
 function QuinielaCard({ d, i }: { d: CardData; i: number }) {
@@ -43,13 +44,19 @@ function QuinielaCard({ d, i }: { d: CardData; i: number }) {
       <div className="min-w-0 flex-1">
         <p className="font-display font-bold text-white leading-tight">{d.label}</p>
         <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
-          <span className="tabular-nums">{d.picks}/{d.total} pronósticos</span>
-          {d.rank?.ranked ? (
-            <span className="inline-flex items-center gap-1 text-amber-300"><Trophy size={10} /> #{d.rank.rank} de {d.rank.total}</span>
-          ) : d.locked ? (
-            <span className="inline-flex items-center gap-1 text-red-300/80"><Lock size={10} /> cerrada</span>
+          {d.subtitle ? (
+            <span>{d.subtitle}</span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-slate-500"><Clock size={10} /> cierra {d.lockLabel}</span>
+            <>
+              <span className="tabular-nums">{d.picks}/{d.total} pronósticos</span>
+              {d.rank?.ranked ? (
+                <span className="inline-flex items-center gap-1 text-amber-300"><Trophy size={10} /> #{d.rank.rank} de {d.rank.total}</span>
+              ) : d.locked ? (
+                <span className="inline-flex items-center gap-1 text-red-300/80"><Lock size={10} /> cerrada</span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-slate-500"><Clock size={10} /> cierra {d.lockLabel}</span>
+              )}
+            </>
           )}
         </p>
       </div>
@@ -83,12 +90,13 @@ export default async function PartidosLobby() {
     }),
   ]);
 
-  const [g1, g2, g2b, g3, mk, ranks] = await Promise.all([
+  const [g1, g2, g2b, g3, mk, bracket, ranks] = await Promise.all([
     getModuleAccess(userId, "MATCHES_G1"),
     getModuleAccess(userId, "MATCHES_G2"),
     getModuleAccess(userId, "MATCHES_G2B"),
     getModuleAccess(userId, "MATCHES_G3"),
     getModuleAccess(userId, "MATCHES"),
+    getModuleAccess(userId, "BRACKET"),
     getGroupQuinielaRanks(userId),
   ]);
   const accessByModule: Record<string, ModuleAccess> = { MATCHES_G1: g1, MATCHES_G2: g2, MATCHES_G2B: g2b, MATCHES_G3: g3, MATCHES: mk };
@@ -112,21 +120,19 @@ export default async function PartidosLobby() {
     });
   }
 
-  const koMatches = matches.filter((m) => m.stage !== "GROUP" && Number(m.price) === 0);
-  if (koMatches.length > 0) {
-    const lockMs = Math.min(...koMatches.map((m) => m.scheduledAt.getTime()));
-    cards.push({
-      href: `/partidos/${"MATCHES" as Module}`,
-      label: "Eliminatorias",
-      accent: "blue",
-      picks: koMatches.filter((m) => m.bets.some((b) => b.poolModule === "MATCHES")).length,
-      total: koMatches.length,
-      access: mk,
-      locked: isLocked(new Date(lockMs)),
-      lockLabel: fmtLock(lockMs),
-      rank: null,
-    });
-  }
+  // Bracket — reemplaza temporalmente la card de Eliminatorias
+  cards.push({
+    href: "/bracket",
+    label: "Bracket Eliminatorias",
+    accent: "amber",
+    picks: 0,
+    total: 0,
+    access: bracket,
+    locked: false,
+    lockLabel: "",
+    rank: null,
+    subtitle: "Predice el camino al título desde Octavos hasta el Campeón",
+  });
 
   return (
     <div className="app-shell min-h-screen text-white">
