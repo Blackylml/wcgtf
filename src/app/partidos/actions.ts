@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { MatchPick, Module } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { getModuleAccess, moduleLockAt, isLocked } from "@/lib/module-access";
-import { quinielaRange } from "@/lib/modules";
+import { quinielaRange, koQuinielaStages } from "@/lib/modules";
 
 // Las apuestas individuales / eliminatorias viven en la bolsa de eliminatorias.
 const KO_POOL: Module = "MATCHES";
@@ -24,6 +24,7 @@ export async function saveQuinielaBets(module: Module, picks: { matchId: string;
   if (isLocked(await moduleLockAt(module))) return { error: "La quiniela ya cerró (empezó el primer partido)" };
 
   const range = quinielaRange(module);
+  const koStages = koQuinielaStages(module);
   const matches = await prisma.match.findMany({
     where: { id: { in: picks.map((p) => p.matchId) } },
     select: { id: true, stage: true, matchNumber: true, penaltiesAllowed: true },
@@ -33,9 +34,10 @@ export async function saveQuinielaBets(module: Module, picks: { matchId: string;
   for (const { matchId, pick } of picks) {
     const m = byId.get(matchId);
     if (!m) continue;
-    // El partido debe pertenecer a esta bolsa (rango de jornada, o eliminatorias).
     const inPool = range
       ? m.stage === "GROUP" && m.matchNumber >= range.min && m.matchNumber <= range.max
+      : koStages
+      ? (koStages as string[]).includes(m.stage)
       : m.stage !== "GROUP";
     if (!inPool) continue;
     if (pick === "DRAW" && m.stage !== "GROUP" && !m.penaltiesAllowed) continue;

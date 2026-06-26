@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Module } from "@/generated/prisma/client";
-import { ALL_MODULES, GROUP_MATCH_QUINIELAS } from "@/lib/modules";
+import { ALL_MODULES, GROUP_MATCH_QUINIELAS, KO_QUINIELAS } from "@/lib/modules";
 
 /**
  * Momento en que la quiniela se cierra = arranque de su primer partido.
@@ -20,6 +20,15 @@ export async function moduleLockAt(module: Module): Promise<Date | null> {
   if (module === "MATCHES") {
     const first = await prisma.match.findFirst({
       where: { stage: { not: "GROUP" } },
+      orderBy: { scheduledAt: "asc" },
+      select: { scheduledAt: true },
+    });
+    return first?.scheduledAt ?? null;
+  }
+  const koQ = KO_QUINIELAS.find((x) => x.module === module);
+  if (koQ) {
+    const first = await prisma.match.findFirst({
+      where: { stage: { in: koQ.stages } },
       orderBy: { scheduledAt: "asc" },
       select: { scheduledAt: true },
     });
@@ -64,7 +73,7 @@ export async function getQuinielaLeaderboard(module: Module): Promise<LeaderRow[
     return sort(users.filter((u) => (priced ? u.payments.length > 0 : u.bracketBets.length > 0))
       .map((u) => ({ id: u.id, name: userName(u), image: u.image, points: u.bracketBets.reduce((s, b) => s + b.score, 0) })));
   }
-  // bolsa de partidos
+  // bolsa de partidos (grupos o KO por ronda)
   const users = await prisma.user.findMany({ select: { ...sel, payments: pay, matchBets: { where: { poolModule: module }, select: { isCorrect: true } } } });
   return sort(users.filter((u) => (priced ? u.payments.length > 0 : u.matchBets.length > 0))
     .map((u) => ({ id: u.id, name: userName(u), image: u.image, points: u.matchBets.filter((b) => b.isCorrect === true).length })));

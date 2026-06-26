@@ -16,6 +16,7 @@ export type QMatch = {
   homeName: string; homeFlag: string | null; homeCode: string | null;
   awayName: string; awayFlag: string | null; awayCode: string | null;
   userBet: MatchPick | null;
+  allowDraw?: boolean; // false en KO sin penales
 };
 
 type Access = { price: number; paymentStatus: string | null; entryOpen: boolean; entered: boolean };
@@ -154,18 +155,20 @@ export function QuinielaSection({
                 <FlagCircle flag={m.homeFlag} code={m.homeCode} size={22} ring={sel === "HOME" ? "ring-blue-400/70" : "ring-white/12"} />
               </button>
 
-              {/* Empate */}
-              <button
-                type="button"
-                onClick={() => choose(m.id, "DRAW")}
-                className={`w-9 h-9 shrink-0 rounded-lg text-[11px] font-bold transition-all active:scale-90 ${
-                  sel === "DRAW"
-                    ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-[0_4px_12px_-4px_rgba(59,157,255,0.9)]"
-                    : "bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08]"
-                }`}
-              >
-                E
-              </button>
+              {/* Empate — solo si aplica */}
+              {(m.allowDraw ?? true) && (
+                <button
+                  type="button"
+                  onClick={() => choose(m.id, "DRAW")}
+                  className={`w-9 h-9 shrink-0 rounded-lg text-[11px] font-bold transition-all active:scale-90 ${
+                    sel === "DRAW"
+                      ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-[0_4px_12px_-4px_rgba(59,157,255,0.9)]"
+                      : "bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08]"
+                  }`}
+                >
+                  E
+                </button>
+              )}
 
               {/* Visitante gana */}
               <button

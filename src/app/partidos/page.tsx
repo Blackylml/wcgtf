@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle } from "@/components/PageTitle";
 import { getModuleAccess, getGroupQuinielaRanks, isLocked, type ModuleAccess, type QuinielaStanding } from "@/lib/module-access";
-import { GROUP_MATCH_QUINIELAS } from "@/lib/modules";
+import { GROUP_MATCH_QUINIELAS, KO_QUINIELAS } from "@/lib/modules";
 import { MatchCard } from "./MatchCard";
 import { CalendarDays, ChevronRight, Trophy, Clock, Lock, ListChecks, Flame } from "lucide-react";
 import Link from "next/link";
@@ -90,16 +90,22 @@ export default async function PartidosLobby() {
     }),
   ]);
 
-  const [g1, g2, g2b, g3, mk, bracket, ranks] = await Promise.all([
+  const [g1, g2, g2b, g3, koR32, koR16, koQF, koSF, koFinal, ranks] = await Promise.all([
     getModuleAccess(userId, "MATCHES_G1"),
     getModuleAccess(userId, "MATCHES_G2"),
     getModuleAccess(userId, "MATCHES_G2B"),
     getModuleAccess(userId, "MATCHES_G3"),
-    getModuleAccess(userId, "MATCHES"),
-    getModuleAccess(userId, "BRACKET"),
+    getModuleAccess(userId, "KO_R32"),
+    getModuleAccess(userId, "KO_R16"),
+    getModuleAccess(userId, "KO_QF"),
+    getModuleAccess(userId, "KO_SF"),
+    getModuleAccess(userId, "KO_FINAL"),
     getGroupQuinielaRanks(userId),
   ]);
-  const accessByModule: Record<string, ModuleAccess> = { MATCHES_G1: g1, MATCHES_G2: g2, MATCHES_G2B: g2b, MATCHES_G3: g3, MATCHES: mk };
+  const accessByModule: Record<string, ModuleAccess> = {
+    MATCHES_G1: g1, MATCHES_G2: g2, MATCHES_G2B: g2b, MATCHES_G3: g3,
+    KO_R32: koR32, KO_R16: koR16, KO_QF: koQF, KO_SF: koSF, KO_FINAL: koFinal,
+  };
 
   const cards: CardData[] = [];
 
@@ -120,19 +126,24 @@ export default async function PartidosLobby() {
     });
   }
 
-  // Bracket — reemplaza temporalmente la card de Eliminatorias
-  cards.push({
-    href: "/bracket",
-    label: "Bracket Eliminatorias",
-    accent: "amber",
-    picks: 0,
-    total: 0,
-    access: bracket,
-    locked: false,
-    lockLabel: "",
-    rank: null,
-    subtitle: "Predice el camino al título desde Dieciseisavos hasta el Campeón",
-  });
+  // Quinielas por ronda eliminatoria
+  for (const koQ of KO_QUINIELAS) {
+    const koMatches = matches.filter((m) => (koQ.stages as string[]).includes(m.stage));
+    const access = accessByModule[koQ.module];
+    const lockMs = koMatches.length ? Math.min(...koMatches.map((m) => m.scheduledAt.getTime())) : 0;
+    cards.push({
+      href: `/partidos/${koQ.module}`,
+      label: koQ.label,
+      accent: "amber",
+      picks: koMatches.filter((m) => m.bets.some((b) => b.poolModule === koQ.module)).length,
+      total: koMatches.length,
+      access,
+      locked: koMatches.length > 0 && isLocked(new Date(lockMs)),
+      lockLabel: koMatches.length > 0 ? fmtLock(lockMs) : "",
+      rank: null,
+      subtitle: koMatches.length === 0 ? "Disponible al conocerse los partidos" : undefined,
+    });
+  }
 
   return (
     <div className="app-shell min-h-screen text-white">
