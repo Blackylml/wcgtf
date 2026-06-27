@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { initBracketSession, toggleBracket, saveBracketConfig, recalcBracketScores } from "./actions";
+import { initBracketSession, toggleBracket, saveBracketConfig, recalcBracketScores, syncBracketFromMatches } from "./actions";
 
 export default async function BracketAdminPage() {
   const [session, moduleSettings] = await Promise.all([
@@ -100,10 +100,19 @@ export default async function BracketAdminPage() {
       {/* Configurar llaves R32 */}
       <Card className="mb-6">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Configurar Ronda de 32 (16 partidos)</CardTitle>
-          <p className="text-xs text-gray-500">
-            Define las 16 llaves del bracket. Los jugadores verán estos enfrentamientos al hacer sus picks.
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Configurar Ronda de 32 (16 partidos)</CardTitle>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Define las 16 llaves del bracket. Los jugadores verán estos enfrentamientos al hacer sus picks.
+              </p>
+            </div>
+            <form action={syncBracketFromMatches.bind(null, session.id)}>
+              <Button type="submit" size="sm" variant="outline" className="text-xs text-blue-600 border-blue-300 hover:bg-blue-50 shrink-0">
+                ⚡ Sincronizar desde partidos
+              </Button>
+            </form>
+          </div>
         </CardHeader>
         <CardContent>
           <form action={async (fd) => {

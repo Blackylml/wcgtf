@@ -27,6 +27,31 @@ export async function saveBracketConfig(id: string, configJson: string) {
   revalidatePath("/bracket");
 }
 
+/** Rellena config.R32 automáticamente desde los partidos R32 en DB (ordenados por matchNumber). */
+export async function syncBracketFromMatches(sessionId: string) {
+  const r32 = await prisma.match.findMany({
+    where: { stage: "R32" },
+    orderBy: { matchNumber: "asc" },
+    include: { homeTeam: { select: { code: true } }, awayTeam: { select: { code: true } } },
+  });
+
+  const pairs: [string, string][] = r32.map((m) => [
+    m.homeTeam?.code ?? m.homeLabel ?? "",
+    m.awayTeam?.code ?? m.awayLabel ?? "",
+  ]);
+
+  const session = await prisma.bracketSession.findUnique({ where: { id: sessionId } });
+  const existing = (session?.config ?? {}) as object;
+  await prisma.bracketSession.update({
+    where: { id: sessionId },
+    data: { config: { ...existing, R32: pairs } },
+  });
+
+  revalidatePath("/admin/bracket");
+  revalidatePath("/bracket");
+  return { synced: pairs.length };
+}
+
 export async function recalcBracketScores(sessionId: string) {
   const session = await prisma.bracketSession.findUnique({ where: { id: sessionId } });
   if (!session?.config) return;
