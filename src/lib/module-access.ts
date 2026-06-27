@@ -73,7 +73,41 @@ export async function getQuinielaLeaderboard(module: Module): Promise<LeaderRow[
     return sort(users.filter((u) => (priced ? u.payments.length > 0 : u.bracketBets.length > 0))
       .map((u) => ({ id: u.id, name: userName(u), image: u.image, points: u.bracketBets.reduce((s, b) => s + b.score, 0) })));
   }
-  // bolsa de partidos (grupos o KO por ronda)
+  // KO quinielas — mismo tipo de apuesta, pero con desempate por tiebreakers
+  const isKO = KO_QUINIELAS.some((q) => q.module === module);
+  if (isKO) {
+    const [users, result, tiebreakers] = await Promise.all([
+      prisma.user.findMany({ select: { ...sel, payments: pay, matchBets: { where: { poolModule: module }, select: { isCorrect: true } } } }),
+      prisma.koRoundResult.findUnique({ where: { module } }),
+      prisma.koTiebreaker.findMany({ where: { module }, select: { userId: true, topScorerTeam: true, firstHalfGoals: true, earliestGoalTeam: true } }),
+    ]);
+    const tbMap = new Map(tiebreakers.map((t) => [t.userId, t]));
+
+    const rows = users
+      .filter((u) => (priced ? u.payments.length > 0 : u.matchBets.length > 0))
+      .map((u) => {
+        const tb = tbMap.get(u.id);
+        const points = u.matchBets.filter((b) => b.isCorrect === true).length;
+        const tb1 = result?.topScorerTeam && tb?.topScorerTeam
+          ? (tb.topScorerTeam === result.topScorerTeam ? 1 : 0) : 0;
+        const tb2 = result?.firstHalfGoals != null && tb?.firstHalfGoals != null
+          ? Math.abs(tb.firstHalfGoals - result.firstHalfGoals) : Infinity;
+        const tb3 = result?.earliestGoalTeam && tb?.earliestGoalTeam
+          ? (tb.earliestGoalTeam === result.earliestGoalTeam ? 1 : 0) : 0;
+        return { id: u.id, name: userName(u), image: u.image, points, tb1, tb2, tb3 };
+      });
+
+    // puntos DESC → tb1 (acierto top scorer) DESC → tb2 (dif goles 1T) ASC → tb3 (acierto gol temprano) DESC
+    rows.sort((a, b) =>
+      b.points - a.points ||
+      b.tb1 - a.tb1 ||
+      (a.tb2 === Infinity ? 1 : b.tb2 === Infinity ? -1 : a.tb2 - b.tb2) ||
+      b.tb3 - a.tb3
+    );
+    return rows.map(({ id, name, image, points }) => ({ id, name, image, points }));
+  }
+
+  // bolsa de partidos de grupos
   const users = await prisma.user.findMany({ select: { ...sel, payments: pay, matchBets: { where: { poolModule: module }, select: { isCorrect: true } } } });
   return sort(users.filter((u) => (priced ? u.payments.length > 0 : u.matchBets.length > 0))
     .map((u) => ({ id: u.id, name: userName(u), image: u.image, points: u.matchBets.filter((b) => b.isCorrect === true).length })));

@@ -113,7 +113,7 @@ export default async function QuinielaDetailPage({
   const koQ = KO_QUINIELAS.find((q) => q.module === mod);
   if (koQ) {
     if (!koQ.available) redirect("/partidos");
-    const [matches, participants, winners] = await Promise.all([
+    const [matches, participants, winners, savedTb] = await Promise.all([
       prisma.match.findMany({
         where: { stage: { in: koQ.stages } },
         orderBy: { matchNumber: "asc" },
@@ -125,10 +125,19 @@ export default async function QuinielaDetailPage({
       }),
       getQuinielaLeaderboard(mod),
       getLastJornadaWinners(),
+      prisma.koTiebreaker.findUnique({ where: { userId_module: { userId, module: mod } } }),
     ]);
     const winnerIds = [...winners];
     const lockMs = matches.length ? Math.min(...matches.map((m) => m.scheduledAt.getTime())) : 0;
     const lockDate = new Date(lockMs);
+
+    // Equipos únicos de la ronda para el selector de desempate
+    const teams = [...new Map(
+      matches.flatMap((m) => [
+        m.homeTeam ? [m.homeTeam.code, m.homeTeam] as [string, typeof m.homeTeam] : null,
+        m.awayTeam ? [m.awayTeam.code, m.awayTeam] as [string, typeof m.awayTeam] : null,
+      ].filter((x): x is [string, NonNullable<typeof m.homeTeam>] => x !== null))
+    ).values()].filter(Boolean);
 
     return (
       <div className="app-shell min-h-screen text-white">
@@ -160,6 +169,12 @@ export default async function QuinielaDetailPage({
                 userBet: m.bets[0]?.pick ?? null,
                 allowDraw: m.penaltiesAllowed,
               }))}
+              teams={teams.map((t) => ({ code: t.code, name: t.name, flag: t.flag ?? null }))}
+              savedTiebreaker={savedTb ? {
+                topScorerTeam: savedTb.topScorerTeam,
+                firstHalfGoals: savedTb.firstHalfGoals,
+                earliestGoalTeam: savedTb.earliestGoalTeam,
+              } : null}
             />
           )}
           {matches.length > 0 && <Leaderboard rows={participants} currentUserId={userId} winnerIds={winnerIds} />}

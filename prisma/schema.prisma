@@ -26,6 +26,7 @@ model User {
   specialBets  SpecialBet[]
   payments     Payment[]
   jornadaReactions JornadaReaction[]
+  koTiebreakers    KoTiebreaker[]
 }
 
 // Reacciones (boo / vamos) al ganador de una jornada. Una por usuario por jornada.
@@ -317,4 +318,28 @@ model ModuleSettings {
   module    Module  @id
   price     Decimal @default(0) @db.Decimal(10, 2)
   entryOpen Boolean @default(true)
+}
+
+// ─── Desempate quinielas KO ───────────────────────────────────────────────────
+
+// Predicciones de desempate del usuario para una quiniela KO.
+model KoTiebreaker {
+  id               String   @id @default(cuid())
+  userId           String
+  module           Module
+  topScorerTeam    String?  // código del equipo más goleador predicho
+  firstHalfGoals   Int?     // goles totales en 1er tiempo predichos
+  earliestGoalTeam String?  // código del equipo con el gol más tempranero predicho
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, module])
+}
+
+// Valores reales de la ronda (ingresados por el admin al terminar).
+model KoRoundResult {
+  module           Module  @id
+  topScorerTeam    String? // equipo que más anotó en la ronda
+  firstHalfGoals   Int?    // total de goles en 1er tiempo en la ronda
+  earliestGoalTeam String? // equipo que anotó primero en la ronda
 }

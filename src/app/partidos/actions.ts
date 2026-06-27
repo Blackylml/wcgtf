@@ -7,6 +7,27 @@ import { revalidatePath } from "next/cache";
 import { getModuleAccess, moduleLockAt, isLocked } from "@/lib/module-access";
 import { quinielaRange, koQuinielaStages } from "@/lib/modules";
 
+export async function saveKoTiebreaker(
+  module: Module,
+  data: { topScorerTeam: string | null; firstHalfGoals: number | null; earliestGoalTeam: string | null },
+) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autenticado" };
+  const userId = session.user.id;
+
+  const access = await getModuleAccess(userId, module);
+  if (!access.entered) return { error: "Primero paga la entrada" };
+  if (isLocked(await moduleLockAt(module))) return { error: "La quiniela ya cerró" };
+
+  await prisma.koTiebreaker.upsert({
+    where: { userId_module: { userId, module } },
+    create: { userId, module, ...data },
+    update: data,
+  });
+  revalidatePath(`/partidos/${module}`);
+  return { success: true };
+}
+
 // Las apuestas individuales / eliminatorias viven en la bolsa de eliminatorias.
 const KO_POOL: Module = "MATCHES";
 

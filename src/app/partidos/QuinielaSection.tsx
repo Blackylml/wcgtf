@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MatchPick, Module } from "@/generated/prisma/client";
-import { saveQuinielaBets } from "./actions";
+import { saveQuinielaBets, saveKoTiebreaker } from "./actions";
 import { FlagCircle } from "@/components/FlagCircle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import type { ModuleAccent } from "@/lib/modules";
-import { Lock, Clock, Trophy } from "lucide-react";
+import { Lock, Clock, Trophy, ShieldAlert } from "lucide-react";
 import type { QuinielaStanding } from "@/lib/module-access";
 
 export type QMatch = {
@@ -44,8 +44,11 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
   );
 }
 
+type TiebreakerPrediction = { topScorerTeam: string | null; firstHalfGoals: number | null; earliestGoalTeam: string | null };
+type TeamOption = { code: string; name: string; flag: string | null };
+
 export function QuinielaSection({
-  module, label, accent, matches, access, locked, lockLabel, standing,
+  module, label, accent, matches, access, locked, lockLabel, standing, teams, savedTiebreaker,
 }: {
   module: Module;
   label: string;
@@ -55,8 +58,23 @@ export function QuinielaSection({
   locked: boolean;
   lockLabel: string;
   standing: QuinielaStanding | null;
+  teams?: TeamOption[];
+  savedTiebreaker?: TiebreakerPrediction | null;
 }) {
   const router = useRouter();
+  const [tb, setTb] = useState<TiebreakerPrediction>({
+    topScorerTeam: savedTiebreaker?.topScorerTeam ?? null,
+    firstHalfGoals: savedTiebreaker?.firstHalfGoals ?? null,
+    earliestGoalTeam: savedTiebreaker?.earliestGoalTeam ?? null,
+  });
+  const [savedTb, setSavedTb] = useState<TiebreakerPrediction>({
+    topScorerTeam: savedTiebreaker?.topScorerTeam ?? null,
+    firstHalfGoals: savedTiebreaker?.firstHalfGoals ?? null,
+    earliestGoalTeam: savedTiebreaker?.earliestGoalTeam ?? null,
+  });
+  const [tbLoading, setTbLoading] = useState(false);
+  const [tbError, setTbError] = useState("");
+
   const init = () => {
     const m: Record<string, MatchPick> = {};
     for (const x of matches) if (x.userBet) m[x.id] = x.userBet;
@@ -204,6 +222,113 @@ export function QuinielaSection({
           {loading ? "Guardando..." : fullyConfirmed ? "✓ Quiniela completa" : allPicked ? "Confirmar quiniela" : `Faltan ${missing}`}
         </button>
       )}
+
+      {/* Tiebreakers — solo en quinielas KO */}
+      {teams && teams.length > 0 && (
+        <TiebreakerSection
+          teams={teams}
+          tb={tb}
+          savedTb={savedTb}
+          setTb={setTb}
+          interactable={access.entered && !locked}
+          loading={tbLoading}
+          error={tbError}
+          onSave={async () => {
+            setTbLoading(true); setTbError("");
+            const res = await saveKoTiebreaker(module, tb);
+            setTbLoading(false);
+            if (res?.error) { setTbError(res.error); return; }
+            setSavedTb({ ...tb });
+          }}
+        />
+      )}
     </section>
+  );
+}
+
+function TiebreakerSection({
+  teams, tb, savedTb, setTb, interactable, loading, error, onSave,
+}: {
+  teams: TeamOption[];
+  tb: TiebreakerPrediction;
+  savedTb: TiebreakerPrediction;
+  setTb: (v: TiebreakerPrediction) => void;
+  interactable: boolean;
+  loading: boolean;
+  error: string;
+  onSave: () => void;
+}) {
+  const changed =
+    tb.topScorerTeam !== savedTb.topScorerTeam ||
+    tb.firstHalfGoals !== savedTb.firstHalfGoals ||
+    tb.earliestGoalTeam !== savedTb.earliestGoalTeam;
+
+  const complete = tb.topScorerTeam !== null && tb.firstHalfGoals !== null && tb.earliestGoalTeam !== null;
+  const confirmed = complete && !changed;
+
+  const sel = "block w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white appearance-none focus:outline-none focus:border-amber-400/50 disabled:opacity-40 disabled:cursor-not-allowed";
+
+  return (
+    <div className="mt-4 rounded-xl border border-amber-400/15 bg-amber-400/[0.03] p-3.5">
+      <h3 className="flex items-center gap-1.5 text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-3">
+        <ShieldAlert size={13} /> Desempate
+      </h3>
+      <div className="space-y-2.5">
+        {/* TB1 */}
+        <div>
+          <label className="block text-[11px] text-slate-400 mb-1">¿Qué equipo anotará más goles en esta ronda?</label>
+          <select
+            disabled={!interactable}
+            value={tb.topScorerTeam ?? ""}
+            onChange={(e) => setTb({ ...tb, topScorerTeam: e.target.value || null })}
+            className={sel}
+          >
+            <option value="">— Elige un equipo —</option>
+            {teams.map((t) => <option key={t.code} value={t.code}>{t.flag ? `${t.flag} ` : ""}{t.name}</option>)}
+          </select>
+        </div>
+        {/* TB2 */}
+        <div>
+          <label className="block text-[11px] text-slate-400 mb-1">¿Cuántos goles habrá en 1er tiempo (todos los partidos)?</label>
+          <input
+            type="number" min={0} max={99}
+            disabled={!interactable}
+            value={tb.firstHalfGoals ?? ""}
+            onChange={(e) => setTb({ ...tb, firstHalfGoals: e.target.value === "" ? null : Number(e.target.value) })}
+            placeholder="Ej. 12"
+            className={`${sel} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+          />
+        </div>
+        {/* TB3 */}
+        <div>
+          <label className="block text-[11px] text-slate-400 mb-1">¿Qué equipo anotará el gol más tempranero de la ronda?</label>
+          <select
+            disabled={!interactable}
+            value={tb.earliestGoalTeam ?? ""}
+            onChange={(e) => setTb({ ...tb, earliestGoalTeam: e.target.value || null })}
+            className={sel}
+          >
+            <option value="">— Elige un equipo —</option>
+            {teams.map((t) => <option key={t.code} value={t.code}>{t.flag ? `${t.flag} ` : ""}{t.name}</option>)}
+          </select>
+        </div>
+      </div>
+      {error && <p className="text-red-400 text-xs mt-2 text-center">{error}</p>}
+      {interactable && (
+        <button
+          onClick={onSave}
+          disabled={loading || !complete || confirmed}
+          className={`mt-3 w-full rounded-xl py-2.5 text-sm font-semibold transition-all active:scale-[0.98] ${
+            confirmed
+              ? "bg-amber-400/10 text-amber-300 border border-amber-400/25"
+              : complete
+                ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white shadow-[0_6px_20px_-8px_rgba(251,191,36,0.7)]"
+                : "bg-white/[0.04] text-slate-500 border border-white/10"
+          }`}
+        >
+          {loading ? "Guardando..." : confirmed ? "✓ Desempate guardado" : complete ? "Guardar desempate" : "Completa las 3 predicciones"}
+        </button>
+      )}
+    </div>
   );
 }

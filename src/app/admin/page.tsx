@@ -34,6 +34,7 @@ export default async function AdminDashboard() {
             <ModuleStatus label="Partidos" href="/admin/partidos" />
             <ModuleStatus label="Bracket Eliminatorias" href="/admin/bracket" />
             <ModuleStatus label="Premios Especiales" href="/admin/especiales" />
+            <ModuleStatus label="Desempate KO" href="/admin/ko-resultados" />
           </CardContent>
         </Card>
 
