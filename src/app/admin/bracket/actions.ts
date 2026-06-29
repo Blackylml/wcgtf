@@ -49,7 +49,6 @@ export async function syncBracketFromMatches(sessionId: string) {
 
   revalidatePath("/admin/bracket");
   revalidatePath("/bracket");
-  return { synced: pairs.length };
 }
 
 export async function recalcBracketScores(sessionId: string) {
