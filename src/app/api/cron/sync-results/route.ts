@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { syncResults, syncKickoffs } from "@/lib/result-sync";
+import { autoPairReadySessions } from "@/lib/duel-auto-pair";
 
 /**
  * Sincroniza resultados desde la API de fútbol.
@@ -19,7 +21,15 @@ export async function GET(req: NextRequest) {
     // Corrige horarios desviados (seed con TZ incorrecta) y luego sincroniza resultados.
     const kickoffs = await syncKickoffs();
     const result = await syncResults();
-    return NextResponse.json({ ok: true, kickoffs, ...result });
+
+    // Auto-emparejar duelos cuya jornada ya arrancó.
+    const paired = await autoPairReadySessions();
+    if (paired.length > 0) {
+      revalidatePath("/duelos");
+      revalidatePath("/admin/duelos");
+    }
+
+    return NextResponse.json({ ok: true, kickoffs, pairedDuels: paired, ...result });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("sync-results error:", msg);

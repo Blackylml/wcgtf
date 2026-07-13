@@ -6,6 +6,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { PageTitle } from "@/components/PageTitle";
 import { Swords } from "lucide-react";
 import { DuelCard } from "./DuelCard";
+import { autoPairReadySessions } from "@/lib/duel-auto-pair";
 
 export default async function DuelosPage() {
   const session = await auth();
@@ -33,6 +34,10 @@ export default async function DuelosPage() {
       select: { credits: true, name: true, image: true },
     }),
   ]);
+
+  // Lazy auto-pair: if any session's jornada has started and pairing hasn't
+  // happened yet, pair now. Safe to call on every render (atomic DB claim).
+  await autoPairReadySessions();
 
   const credits = Number(user?.credits ?? 0);
   const currentUser = {

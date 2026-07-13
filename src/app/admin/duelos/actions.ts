@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { executePairing } from "@/lib/duel-auto-pair";
 import type { Module } from "../../../generated/prisma/client";
 
 async function requireAdmin() {
@@ -30,63 +31,14 @@ export async function toggleDuelSession(id: string, current: boolean) {
 }
 
 /**
- * Empareja a todos los participantes sin pareja de forma aleatoria.
- * Si queda un número impar, el último recibe reembolso de créditos.
+ * Empareja aleatoriamente todos los participantes sin pareja.
+ * Usa executePairing() que es atómica (safe ante doble-click).
  */
 export async function pairDuelEntries(sessionId: string) {
   await requireAdmin();
-
-  const session = await prisma.duelSession.findUnique({
-    where: { id: sessionId },
-    include: { entries: { where: { paired: false, refunded: false } } },
-  });
-  if (!session) return;
-
-  const unpaired = [...session.entries].sort(() => Math.random() - 0.5);
-  const prize = Number(session.entryFee) * 2 * (1 - session.houseCutPct / 100);
-
-  const pairs: Array<{ user1Id: string; user2Id: string }> = [];
-  for (let i = 0; i + 1 < unpaired.length; i += 2) {
-    pairs.push({ user1Id: unpaired[i].userId, user2Id: unpaired[i + 1].userId });
-  }
-
-  const leftover = unpaired.length % 2 === 1 ? unpaired[unpaired.length - 1] : null;
-
-  await prisma.$transaction([
-    // Crear pares
-    ...pairs.map((p) =>
-      prisma.duelPair.create({
-        data: { sessionId, user1Id: p.user1Id, user2Id: p.user2Id, prizePool: prize },
-      }),
-    ),
-    // Marcar entradas como emparejadas
-    prisma.duelEntry.updateMany({
-      where: { id: { in: unpaired.slice(0, pairs.length * 2).map((e) => e.id) } },
-      data: { paired: true },
-    }),
-    // Reembolsar al sobrante (si lo hay)
-    ...(leftover
-      ? [
-          prisma.duelEntry.update({ where: { id: leftover.id }, data: { refunded: true } }),
-          prisma.user.update({
-            where: { id: leftover.userId },
-            data: { credits: { increment: session.entryFee } },
-          }),
-          prisma.creditTransaction.create({
-            data: {
-              userId: leftover.userId,
-              amount: session.entryFee,
-              type: "REFUND",
-              description: `Reembolso: sin pareja en ${session.label}`,
-              refId: sessionId,
-            },
-          }),
-        ]
-      : []),
-    prisma.duelSession.update({ where: { id: sessionId }, data: { pairingDone: true } }),
-  ]);
-
+  await executePairing(sessionId);
   revalidatePath("/admin/duelos");
+  revalidatePath("/duelos");
 }
 
 /**
