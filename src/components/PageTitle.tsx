@@ -5,6 +5,7 @@ const ACCENTS = {
   blue:   { badge: "bg-blue-400/10 ring-blue-400/30 halo-blue",     icon: "text-blue-400" },
   amber:  { badge: "bg-amber-400/10 ring-amber-400/30 halo-amber",   icon: "text-amber-400" },
   purple: { badge: "bg-purple-400/10 ring-purple-400/30 halo-purple", icon: "text-purple-400" },
+  red:    { badge: "bg-red-400/10 ring-red-400/30 halo-red",         icon: "text-red-400" },
 } as const;
 
 export type Accent = keyof typeof ACCENTS;
