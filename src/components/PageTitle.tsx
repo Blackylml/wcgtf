@@ -11,7 +11,7 @@ export type Accent = keyof typeof ACCENTS;
 
 /** Consistent page heading: accent icon badge + display title, optional subtitle and right slot. */
 export function PageTitle({
-  title, subtitle, icon: Icon, accent = "green", right,
+  title, subtitle, icon: Icon, accent = "amber", right,
 }: {
   title: string;
   subtitle?: string;

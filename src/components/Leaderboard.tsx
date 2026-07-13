@@ -38,14 +38,14 @@ export function Leaderboard({ rows, currentUserId, winnerIds }: { rows: LeaderRo
             {rows.map((r, i) => {
               const isMe = r.id === currentUserId;
               return (
-                <tr key={r.id} className={`border-b border-white/[0.05] last:border-0 ${isMe ? "bg-green-400/[0.08]" : ""}`}>
+                <tr key={r.id} className={`border-b border-white/[0.05] last:border-0 ${isMe ? "bg-amber-400/[0.07]" : ""}`}>
                   <td className={`px-3 py-2.5 font-mono font-bold w-8 ${ranked && i < 3 ? RANK_COLOR[i] : "text-slate-500"}`}>{i + 1}</td>
                   <td className="px-1 py-2.5">
                     <div className="flex items-center gap-2 min-w-0">
                       <Avatar name={r.name} image={r.image} />
                       <span className="text-slate-200 truncate">{r.name.split(" ").slice(0, 2).join(" ")}</span>
                       {winners.has(r.id) && <WinnerStar />}
-                      {isMe && <span className="text-[10px] font-semibold text-green-400 shrink-0">tú</span>}
+                      {isMe && <span className="text-[10px] font-semibold text-amber-400 shrink-0">tú</span>}
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-right font-bold text-amber-300 tabular-nums">{r.points}</td>

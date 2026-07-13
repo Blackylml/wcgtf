@@ -33,11 +33,11 @@ export function AdminNav() {
             href={href}
             className={`group shrink-0 flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 rounded-xl text-sm font-medium transition-all ${
               active
-                ? "bg-green-400/10 text-green-300 ring-1 ring-green-400/25"
+                ? "bg-amber-400/10 text-amber-300 ring-1 ring-amber-400/25"
                 : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
             }`}
           >
-            <Icon size={17} strokeWidth={active ? 2.3 : 1.9} className={active ? "text-green-400" : ""} />
+            <Icon size={17} strokeWidth={active ? 2.3 : 1.9} className={active ? "text-amber-400" : ""} />
             {label}
           </Link>
         );

@@ -27,12 +27,7 @@ export default async function DashboardPage() {
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  const [groupBets, matchBets, specialBets, bracketBet, allUsers, moduleSettings] = await Promise.all([
-    prisma.groupBet.findMany({
-      where: { userId },
-      include: { groupPool: true, team: true },
-      orderBy: [{ groupPool: { name: "asc" } }, { position: "asc" }],
-    }),
+  const [matchBets, specialBets, allUsers, moduleSettings] = await Promise.all([
     prisma.matchBet.findMany({
       where: { userId },
       include: { match: { include: { homeTeam: true, awayTeam: true } } },
@@ -42,73 +37,53 @@ export default async function DashboardPage() {
       where: { userId },
       include: { player: { include: { team: true } } },
     }),
-    prisma.bracketBet.findFirst({ where: { userId }, select: { score: true } }),
     prisma.user.findMany({
       select: {
         id: true, name: true, email: true, image: true,
-        payments: { where: { module: { not: null }, status: "APPROVED" }, select: { module: true } },
-        matchBets: { select: { isCorrect: true, paymentId: true, poolModule: true, payment: { select: { status: true } } } },
-        groupBets: { select: { isCorrect: true } },
+        payments:  { where: { module: { not: null }, status: "APPROVED" }, select: { module: true } },
+        matchBets: { select: { isCorrect: true, poolModule: true } },
         specialBets: { select: { isCorrect: true } },
-        bracketBets: { select: { score: true } },
       },
     }),
     prisma.moduleSettings.findMany(),
   ]);
 
-  // Un módulo con precio > 0 solo cuenta/aparece si el usuario tiene su entrada APROBADA.
   const pricedModules = new Set(moduleSettings.filter((s) => Number(s.price) > 0).map((s) => String(s.module)));
-  const valid = (paidModules: Set<string>, m: string) => !pricedModules.has(m) || paidModules.has(m);
+  const valid = (paid: Set<string>, m: string) => !pricedModules.has(m) || paid.has(m);
+
+  const LMX_MOD_SET = new Set([
+    "LMX_J1","LMX_J2","LMX_J3","LMX_J4","LMX_J5","LMX_J6","LMX_J7","LMX_J8","LMX_J9",
+    "LMX_J10","LMX_J11","LMX_J12","LMX_J13","LMX_J14","LMX_J15","LMX_J16","LMX_J17",
+  ]);
 
   const standings = allUsers
     .map((u) => {
       const paid = new Set(u.payments.map((p) => p.module).filter(Boolean) as string[]);
-      // Partidos: puntos (correctos, según pago) y participación (tiene apuesta) por bolsa.
-      const mc: Record<string, number> = { MATCHES_G1: 0, MATCHES_G2: 0, MATCHES_G2B: 0, MATCHES_G3: 0, MATCHES: 0 };
-      const mh: Record<string, boolean> = { MATCHES_G1: false, MATCHES_G2: false, MATCHES_G2B: false, MATCHES_G3: false, MATCHES: false };
-      for (const b of u.matchBets) {
-        const mod = b.poolModule; // null = apuesta individual (no entra al ranking de quinielas)
-        if (!mod || mc[mod] === undefined) continue;
-        mh[mod] = true;
-        if (b.isCorrect === true && valid(paid, mod)) mc[mod]++;
-      }
-      const groupCorrect = u.groupBets.filter((g) => g.isCorrect === true).length;
-      const specialCorrect = u.specialBets.filter((s) => s.isCorrect === true).length;
-      // Participa (aparece en el ranking) solo si: bolsa gratis con apuesta, o bolsa de paga con entrada aprobada.
       const conf = (m: string, hasBet: boolean) => (pricedModules.has(m) ? paid.has(m) : hasBet);
-      const hasGroup = conf("GROUPS", u.groupBets.length > 0);
+
+      let lmxScore = 0;
+      let hasLmxBet = false;
+      for (const b of u.matchBets) {
+        const mod = b.poolModule;
+        if (!mod || !LMX_MOD_SET.has(mod)) continue;
+        hasLmxBet = true;
+        if (b.isCorrect === true && valid(paid, mod)) lmxScore++;
+      }
+      const specialCorrect = u.specialBets.filter((s) => s.isCorrect === true).length;
+      const hasLmx    = hasLmxBet;
       const hasSpecial = conf("SPECIALS", u.specialBets.length > 0);
-      const hasBracket = conf("BRACKET", u.bracketBets.length > 0);
       return {
         id: u.id,
         name: u.name ?? u.email ?? "—",
         image: u.image ?? null,
-        groupScore: valid(paid, "GROUPS") ? groupCorrect : 0,
-        g1Score: mc.MATCHES_G1,
-        g2Score: mc.MATCHES_G2,
-        g2bScore: mc.MATCHES_G2B,
-        g3Score: mc.MATCHES_G3,
-        knockoutScore: mc.MATCHES,
+        lmxScore,
         specialScore: valid(paid, "SPECIALS") ? specialCorrect : 0,
-        bracketScore: valid(paid, "BRACKET") ? u.bracketBets.reduce((s, b) => s + b.score, 0) : 0,
-        hasGroup,
-        hasG1: conf("MATCHES_G1", mh.MATCHES_G1),
-        hasG2: conf("MATCHES_G2", mh.MATCHES_G2),
-        hasG2b: conf("MATCHES_G2B", mh.MATCHES_G2B),
-        hasG3: conf("MATCHES_G3", mh.MATCHES_G3),
+        hasLmx,
         hasSpecial,
-        hasBracket,
-        hasAny:
-          hasGroup || hasSpecial || hasBracket ||
-          conf("MATCHES_G1", mh.MATCHES_G1) || conf("MATCHES_G2", mh.MATCHES_G2) ||
-          conf("MATCHES_G2B", mh.MATCHES_G2B) || conf("MATCHES_G3", mh.MATCHES_G3) ||
-          conf("MATCHES", mh.MATCHES),
+        hasAny: hasLmx || hasSpecial,
       };
     })
-    .map((u) => ({
-      ...u,
-      total: u.groupScore + u.g1Score + u.g2Score + u.g2bScore + u.g3Score + u.knockoutScore + u.specialScore + u.bracketScore,
-    }))
+    .map((u) => ({ ...u, total: u.lmxScore + u.specialScore }))
     .sort((a, b) => b.total - a.total);
 
   const participants = standings.filter((u) => u.hasAny);
@@ -116,13 +91,6 @@ export default async function DashboardPage() {
   const myStats = standings.find((u) => u.id === userId);
   const winnerIds = [...(await getLastJornadaWinners())];
   const iAmWinner = winnerIds.includes(userId);
-
-  const groupBetMap = groupBets.reduce((acc, b) => {
-    const k = b.groupPool.name;
-    if (!acc[k]) acc[k] = [];
-    acc[k].push(b);
-    return acc;
-  }, {} as Record<string, typeof groupBets>);
 
   const correctMatches = matchBets.filter((b) => b.isCorrect === true).length;
   const gradedMatches = matchBets.filter((b) => b.isCorrect !== null).length;
@@ -137,7 +105,7 @@ export default async function DashboardPage() {
           <div className="absolute inset-0 stadium-lines" />
           <div className="relative p-5 sm:p-6 flex items-end justify-between">
             <div>
-              <p className="text-[11px] font-bold text-green-400 uppercase tracking-[0.18em] mb-2 flex items-center gap-1.5">
+              <p className="text-[11px] font-bold text-amber-400 uppercase tracking-[0.18em] mb-2 flex items-center gap-1.5">
                 Mi posición {iAmWinner && <WinnerStar size={13} />}
               </p>
               <p className="font-display text-6xl font-extrabold text-white leading-none tabular-nums">
@@ -186,31 +154,6 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Group bets */}
-          {Object.keys(groupBetMap).length > 0 && (
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] overflow-hidden">
-              <div className="px-4 py-3 border-b border-white/5">
-                <h2 className="font-display text-sm font-bold">Mis grupos</h2>
-              </div>
-              <div className="divide-y divide-white/5 max-h-56 overflow-y-auto">
-                {Object.entries(groupBetMap).map(([gName, bets]) => (
-                  <div key={gName} className="px-4 py-2.5">
-                    <p className="text-[11px] text-slate-500 mb-1">Grupo {gName}</p>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                      {bets.sort((a, b) => a.position - b.position).map((b) => (
-                        <div key={b.id} className="flex items-center gap-1.5 text-xs">
-                          <span className="text-slate-600 w-4">{b.position}°</span>
-                          <span className="text-slate-300 truncate">{b.team.flag} {b.team.name}</span>
-                          <StatusIcon v={b.isCorrect} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Specials */}
           {specialBets.length > 0 && (
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] overflow-hidden">
@@ -233,15 +176,6 @@ export default async function DashboardPage() {
             </div>
           )}
 
-          {/* Bracket */}
-          {bracketBet && (
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] px-4 py-3 flex items-center justify-between">
-              <span className="text-sm font-semibold">Bracket</span>
-              <a href="/bracket" className="text-xs text-blue-400 hover:underline">
-                Ver · {bracketBet.score} pts
-              </a>
-            </div>
-          )}
         </div>
       </div>
 

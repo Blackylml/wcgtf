@@ -9,38 +9,22 @@ export type Standing = {
   name: string;
   image: string | null;
   total: number;
-  groupScore: number;
-  g1Score: number;
-  g2Score: number;
-  g2bScore: number;
-  g3Score: number;
+  lmxScore: number;
   specialScore: number;
-  bracketScore: number;
-  hasAny: boolean;
-  hasGroup: boolean;
-  hasG1: boolean;
-  hasG2: boolean;
-  hasG2b: boolean;
-  hasG3: boolean;
+  hasLmx: boolean;
   hasSpecial: boolean;
-  hasBracket: boolean;
+  hasAny: boolean;
 };
 
 const TABS = [
-  { key: "group", label: "Grupos", metric: (r: Standing) => r.groupScore, has: (r: Standing) => r.hasGroup },
-  { key: "g1", label: "Jornada 1", metric: (r: Standing) => r.g1Score, has: (r: Standing) => r.hasG1 },
-  { key: "g2", label: "J2 · $50", metric: (r: Standing) => r.g2Score, has: (r: Standing) => r.hasG2 },
-  { key: "g2b", label: "J2 · Premio $250", metric: (r: Standing) => r.g2bScore, has: (r: Standing) => r.hasG2b },
-  { key: "g3", label: "Jornada 3", metric: (r: Standing) => r.g3Score, has: (r: Standing) => r.hasG3 },
+  { key: "lmx",     label: "Jornadas",   metric: (r: Standing) => r.lmxScore,    has: (r: Standing) => r.hasLmx     },
   { key: "special", label: "Especiales", metric: (r: Standing) => r.specialScore, has: (r: Standing) => r.hasSpecial },
-  { key: "bracket", label: "Bracket", metric: (r: Standing) => r.bracketScore, has: (r: Standing) => r.hasBracket },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
 const RANK_COLOR = ["text-amber-300", "text-slate-200", "text-orange-300"];
 
-/** Nombre + primer apellido (primeras dos palabras). */
 function displayName(name: string) {
   return name.split(" ").slice(0, 2).join(" ");
 }
@@ -67,7 +51,7 @@ function Avatar({ name, image, size = "sm" }: { name: string; image: string | nu
   );
 }
 
-const PODIUM_ORDER = [1, 0, 2]; // plata, oro, bronce
+const PODIUM_ORDER = [1, 0, 2];
 const PODIUM_COLORS = ["text-amber-300", "text-slate-200", "text-orange-300"];
 const PODIUM_SIZES = ["text-2xl", "text-xl", "text-xl"];
 const PODIUM_BAR = [
@@ -76,23 +60,25 @@ const PODIUM_BAR = [
   "h-8 bg-gradient-to-t from-orange-700/5 to-orange-500/20 border border-orange-500/20",
 ];
 
-// Quiniela más reciente con datos (jornadas, de la última a la primera) → pestaña por defecto.
-const MATCH_RECENCY: TabKey[] = ["g3", "g2b", "g2", "g1"];
 function pickDefault(rows: Standing[]): TabKey {
-  for (const k of MATCH_RECENCY) {
-    const t = TABS.find((x) => x.key === k)!;
-    if (rows.some((r) => t.has(r))) return k;
-  }
   const any = TABS.find((t) => rows.some((r) => t.has(r)));
-  return (any?.key ?? TABS[0].key) as TabKey;
+  return (any?.key ?? "lmx") as TabKey;
 }
 
-export function StandingsTable({ standings, currentUserId, winnerIds }: { standings: Standing[]; currentUserId: string; winnerIds?: string[] }) {
+export function StandingsTable({
+  standings, currentUserId, winnerIds,
+}: {
+  standings: Standing[];
+  currentUserId: string;
+  winnerIds?: string[];
+}) {
   const [tab, setTab] = useState<TabKey>(() => pickDefault(standings));
   const active = TABS.find((t) => t.key === tab)!;
   const winners = new Set(winnerIds ?? []);
 
-  const sorted = standings.filter(active.has).sort((a, b) => active.metric(b) - active.metric(a) || b.total - a.total);
+  const sorted = standings
+    .filter(active.has)
+    .sort((a, b) => active.metric(b) - active.metric(a) || b.total - a.total);
   const podium = sorted.slice(0, 3);
 
   return (
@@ -108,7 +94,7 @@ export function StandingsTable({ standings, currentUserId, winnerIds }: { standi
                 onClick={() => setTab(t.key)}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                   isActive
-                    ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-[0_6px_18px_-8px_rgba(34,224,122,0.9)]"
+                    ? "bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-[0_6px_18px_-8px_rgba(240,165,0,0.8)]"
                     : "bg-white/[0.04] text-slate-400 hover:text-white border border-white/10"
                 }`}
               >
@@ -119,7 +105,7 @@ export function StandingsTable({ standings, currentUserId, winnerIds }: { standi
         </div>
       </div>
 
-      {/* Podio de la apuesta seleccionada */}
+      {/* Podio */}
       {podium.length >= 2 && (
         <div className="px-4 py-5 border-b border-white/[0.06]">
           <div className="flex items-end justify-center gap-5">
@@ -132,8 +118,10 @@ export function StandingsTable({ standings, currentUserId, winnerIds }: { standi
                 <div key={u.id} className="flex flex-col items-center gap-1.5">
                   {isGold && <Crown size={16} className="text-amber-300 -mb-0.5" />}
                   <Avatar name={u.name} image={u.image} size={isGold ? "xl" : "lg"} />
-                  <span className={`font-display font-extrabold tabular-nums ${PODIUM_SIZES[i]} ${PODIUM_COLORS[i]}`}>{active.metric(u)}</span>
-                  <span className={`text-xs font-semibold truncate max-w-[72px] text-center flex items-center gap-1 justify-center ${isMe ? "text-green-400" : "text-white"}`}>
+                  <span className={`font-display font-extrabold tabular-nums ${PODIUM_SIZES[i]} ${PODIUM_COLORS[i]}`}>
+                    {active.metric(u)}
+                  </span>
+                  <span className={`text-xs font-semibold truncate max-w-[72px] text-center flex items-center gap-1 justify-center ${isMe ? "text-amber-400" : "text-white"}`}>
                     {u.name.split(" ")[0]}
                     {winners.has(u.id) && <WinnerStar size={11} />}
                   </span>
@@ -161,14 +149,14 @@ export function StandingsTable({ standings, currentUserId, winnerIds }: { standi
             {sorted.map((u, i) => {
               const isMe = u.id === currentUserId;
               return (
-                <tr key={u.id} className={`border-b border-white/[0.05] ${isMe ? "bg-green-400/[0.08]" : "hover:bg-white/[0.03]"}`}>
+                <tr key={u.id} className={`border-b border-white/[0.05] ${isMe ? "bg-amber-400/[0.07]" : "hover:bg-white/[0.03]"}`}>
                   <td className={`px-3 py-2.5 font-mono font-bold ${i < 3 ? RANK_COLOR[i] : "text-slate-500"}`}>{i + 1}</td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2 min-w-0">
                       <Avatar name={u.name} image={u.image} />
                       <span className="font-medium text-white truncate">{displayName(u.name)}</span>
                       {winners.has(u.id) && <WinnerStar />}
-                      {isMe && <span className="text-[10px] font-semibold text-green-400 shrink-0">tú</span>}
+                      {isMe && <span className="text-[10px] font-semibold text-amber-400 shrink-0">tú</span>}
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-right font-bold text-amber-300 tabular-nums">{active.metric(u)}</td>
@@ -177,7 +165,9 @@ export function StandingsTable({ standings, currentUserId, winnerIds }: { standi
               );
             })}
             {sorted.length === 0 && (
-              <tr><td colSpan={4} className="px-3 py-8 text-center text-slate-600">Sin participantes</td></tr>
+              <tr>
+                <td colSpan={4} className="px-3 py-8 text-center text-slate-600">Sin participantes todavía.</td>
+              </tr>
             )}
           </tbody>
         </table>

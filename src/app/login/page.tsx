@@ -1,5 +1,4 @@
 import { signIn } from "@/auth";
-import { Trophy } from "lucide-react";
 
 function GoogleIcon() {
   return (
@@ -12,29 +11,42 @@ function GoogleIcon() {
   );
 }
 
+function ShieldIcon() {
+  return (
+    <svg width="28" height="33" viewBox="0 0 17 20" fill="none" aria-hidden>
+      <path d="M8.5 1L1 4.2V10.6C1 14.8 4.3 18.4 8.5 19C12.7 18.4 16 14.8 16 10.6V4.2L8.5 1Z"
+        stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <circle cx="8.5" cy="10.2" r="2.8" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M8.5 7.4V10.2M8.5 10.2L6.2 11.8M8.5 10.2L10.8 11.8"
+        stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   return (
     <main className="app-shell relative min-h-screen flex items-center justify-center px-4 overflow-hidden">
       {/* Ambient glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-48 left-1/2 -translate-x-1/2 w-[640px] h-[640px] rounded-full bg-green-500/[0.12] blur-3xl" />
-        <div className="absolute top-1/3 -right-40 w-[420px] h-[420px] rounded-full bg-blue-500/[0.08] blur-3xl" />
+        <div className="absolute -top-48 left-1/2 -translate-x-1/2 w-[640px] h-[640px] rounded-full bg-amber-500/[0.10] blur-3xl" />
+        <div className="absolute top-1/3 -right-40 w-[420px] h-[420px] rounded-full bg-red-500/[0.06] blur-3xl" />
       </div>
 
       <div className="animate-rise relative w-full max-w-sm">
         <div className="relative rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-8 flex flex-col items-center gap-7 shadow-[0_40px_100px_-40px_rgba(0,0,0,0.9)]">
-          {/* hairline top accent */}
-          <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-green-400/50 to-transparent" />
+          {/* hairline dorada */}
+          <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
 
           <div className="flex flex-col items-center gap-4">
-            <span className="grid place-items-center w-16 h-16 rounded-2xl bg-green-400/10 ring-1 ring-green-400/30 halo-green">
-              <Trophy size={32} className="text-green-400" strokeWidth={1.8} />
+            <span className="grid place-items-center w-16 h-16 rounded-2xl bg-amber-400/10 ring-1 ring-amber-400/30 halo-gold">
+              <ShieldIcon />
             </span>
             <div className="text-center">
-              <h1 className="font-display text-3xl font-extrabold text-white tracking-tight">
-                WCGTF <span className="text-gradient-brand">2026</span>
+              <h1 className="font-display text-3xl font-extrabold text-white tracking-tight leading-none">
+                LIGA<span className="text-gradient-brand">MX</span>
               </h1>
-              <p className="text-slate-400 text-sm mt-1.5">Quiniela del Mundial</p>
+              <p className="text-[11px] font-bold tracking-[0.16em] text-amber-400/60 mt-1 uppercase">Fantasy</p>
+              <p className="text-slate-400 text-sm mt-2">Quiniela Liga MX · Apertura 2026</p>
             </div>
           </div>
 
