@@ -135,23 +135,27 @@
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   WCGTF — neon stadium design system
+   Liga MX Fantasy — "Noche de partido" design system
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --app-bg: #070b16;
-  --neon-green: #22e07a;
-  --neon-blue: #3b9dff;
-  --neon-amber: #f5b13c;
-  --neon-purple: #a87bff;
+  --app-bg:      #0c0a07;  /* carbón cálido — reemplaza el navy frío */
+  --liga-gold:   #f0a500;  /* oro estadio — reflectores nocturnos */
+  --liga-red:    #e8374a;  /* rojo gol — urgencia, acción */
+  --liga-green:  #29c95e;  /* verde césped — solo para live / aciertos */
+  --neon-blue:   #3b9dff;  /* azul — elementos secundarios */
+  --neon-amber:  #f5b13c;  /* ámbar — trofeos, premios */
+  --neon-purple: #a87bff;  /* morado — especiales */
+  /* alias de compatibilidad — componentes aún no migrados */
+  --neon-green:  var(--liga-green);
 }
 
-/* App-wide ambient background: deep navy with faint top glow + fine grid */
+/* App-wide ambient background: dos conos de reflector desde las esquinas */
 .app-shell {
   position: relative;
   background:
-    radial-gradient(120% 60% at 50% -10%, rgba(34, 224, 122, 0.08), transparent 60%),
-    radial-gradient(80% 50% at 100% 0%, rgba(59, 157, 255, 0.06), transparent 55%),
+    radial-gradient(ellipse 60% 50% at -5% 0%,  rgba(240, 165,  0, 0.09), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 105% 0%, rgba(232,  55, 74, 0.06), transparent 60%),
     var(--app-bg);
 }
 .app-shell::before {
@@ -160,16 +164,16 @@
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+    linear-gradient(rgba(255, 240, 200, 0.014) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 240, 200, 0.014) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(100% 70% at 50% 0%, #000 30%, transparent 80%);
   z-index: 0;
 }
 
-/* Gradient brand text (green → blue) */
+/* Gradient brand text (gold → red) */
 .text-gradient-brand {
-  background: linear-gradient(100deg, var(--neon-green), var(--neon-blue));
+  background: linear-gradient(100deg, var(--liga-gold), var(--liga-red));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -178,25 +182,27 @@
 /* Stadium ambience inside the next-match hero */
 .stadium-bg {
   background:
-    radial-gradient(90% 120% at 0% 0%, rgba(34, 224, 122, 0.22), transparent 55%),
-    radial-gradient(90% 120% at 100% 0%, rgba(59, 157, 255, 0.16), transparent 55%),
-    radial-gradient(120% 140% at 50% 120%, rgba(34, 224, 122, 0.10), transparent 60%),
-    linear-gradient(160deg, #101a2e 0%, #0a1322 55%, #070d18 100%);
+    radial-gradient(90% 120% at 0%   0%, rgba(240, 165,  0, 0.18), transparent 55%),
+    radial-gradient(90% 120% at 100% 0%, rgba(232,  55, 74, 0.12), transparent 55%),
+    radial-gradient(120% 140% at 50% 120%, rgba(240, 165, 0, 0.07), transparent 60%),
+    linear-gradient(160deg, #181008 0%, #110c06 55%, #0c0a07 100%);
 }
 /* Perspective pitch lines drawn over the stadium */
 .stadium-lines {
   background-image:
-    linear-gradient(to top, rgba(34, 224, 122, 0.10), transparent 70%),
-    repeating-linear-gradient(115deg, transparent 0 38px, rgba(255, 255, 255, 0.035) 38px 39px),
-    repeating-linear-gradient(65deg, transparent 0 38px, rgba(255, 255, 255, 0.025) 38px 39px);
+    linear-gradient(to top, rgba(240, 165, 0, 0.08), transparent 70%),
+    repeating-linear-gradient(115deg, transparent 0 38px, rgba(255, 255, 255, 0.032) 38px 39px),
+    repeating-linear-gradient(65deg,  transparent 0 38px, rgba(255, 255, 255, 0.022) 38px 39px);
   mask-image: linear-gradient(to top, #000 0%, transparent 75%);
 }
 
 /* Soft neon halo behind round icon badges */
-.halo-green  { box-shadow: 0 0 0 1px rgba(34, 224, 122, 0.35), 0 0 22px -4px rgba(34, 224, 122, 0.65); }
-.halo-blue   { box-shadow: 0 0 0 1px rgba(59, 157, 255, 0.35), 0 0 22px -4px rgba(59, 157, 255, 0.65); }
+.halo-gold   { box-shadow: 0 0 0 1px rgba(240, 165,  0, 0.38), 0 0 22px -4px rgba(240, 165,  0, 0.70); }
+.halo-red    { box-shadow: 0 0 0 1px rgba(232,  55, 74, 0.35), 0 0 22px -4px rgba(232,  55, 74, 0.65); }
+.halo-green  { box-shadow: 0 0 0 1px rgba( 41, 201, 94, 0.35), 0 0 22px -4px rgba( 41, 201, 94, 0.65); }
+.halo-blue   { box-shadow: 0 0 0 1px rgba( 59, 157,255, 0.35), 0 0 22px -4px rgba( 59, 157,255, 0.65); }
 .halo-amber  { box-shadow: 0 0 0 1px rgba(245, 177, 60, 0.35), 0 0 22px -4px rgba(245, 177, 60, 0.65); }
-.halo-purple { box-shadow: 0 0 0 1px rgba(168, 123, 255, 0.35), 0 0 22px -4px rgba(168, 123, 255, 0.65); }
+.halo-purple { box-shadow: 0 0 0 1px rgba(168, 123,255, 0.35), 0 0 22px -4px rgba(168, 123,255, 0.65); }
 
 /* Staggered entrance */
 @keyframes rise {
@@ -208,10 +214,10 @@
   animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* Slow pulse for the VS badge ring */
+/* Slow pulse for the VS badge ring — gold Liga MX */
 @keyframes haloPulse {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(34, 224, 122, 0.6), 0 0 18px -2px rgba(34, 224, 122, 0.5); }
-  50%      { box-shadow: 0 0 0 1px rgba(34, 224, 122, 0.9), 0 0 28px 0px rgba(34, 224, 122, 0.8); }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(240, 165, 0, 0.60), 0 0 18px -2px rgba(240, 165, 0, 0.50); }
+  50%      { box-shadow: 0 0 0 1px rgba(240, 165, 0, 0.90), 0 0 28px  0px rgba(240, 165, 0, 0.80); }
 }
 .animate-halo-pulse { animation: haloPulse 2.4s ease-in-out infinite; }
 
