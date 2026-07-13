@@ -166,6 +166,10 @@ enum Stage {
   SF
   THIRD
   FINAL
+  JORNADA  // Liga MX temporada regular
+  LIG_QF   // Liga MX Liguilla — Cuartos de Final
+  LIG_SF   // Liga MX Liguilla — Semifinales
+  LIG_FINAL // Liga MX Liguilla — Final
 }
 
 model MatchBet {
@@ -312,6 +316,28 @@ enum Module {
   KO_FINAL
   BRACKET
   SPECIALS
+  // Liga MX Apertura 2026 — Temporada regular (17 jornadas)
+  LMX_J1
+  LMX_J2
+  LMX_J3
+  LMX_J4
+  LMX_J5
+  LMX_J6
+  LMX_J7
+  LMX_J8
+  LMX_J9
+  LMX_J10
+  LMX_J11
+  LMX_J12
+  LMX_J13
+  LMX_J14
+  LMX_J15
+  LMX_J16
+  LMX_J17
+  // Liga MX Liguilla
+  LMX_QF
+  LMX_SF
+  LMX_FINAL
 }
 
 model ModuleSettings {
