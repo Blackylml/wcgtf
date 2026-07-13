@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Module } from "@/generated/prisma/client";
-import { ALL_MODULES, GROUP_MATCH_QUINIELAS, KO_QUINIELAS } from "@/lib/modules";
+import { ALL_MODULES, GROUP_MATCH_QUINIELAS, KO_QUINIELAS, LMX_JORNADAS } from "@/lib/modules";
 
 /**
  * Momento en que la quiniela se cierra = arranque de su primer partido.
@@ -193,6 +193,41 @@ export async function getGroupQuinielaRanks(userId: string): Promise<Record<stri
     const mine = rows.find((r) => r.id === userId);
     if (!mine) { out[q.module] = null; continue; }
     const rank = rows.filter((r) => r.points > mine.points).length + 1;
+    const ranked = rows.some((r) => r.points > 0);
+    out[q.module] = { rank, total: rows.length, points: mine.points, ranked };
+  }
+  return out;
+}
+
+/** Posición del usuario en cada jornada regular de Liga MX (misma lógica que getGroupQuinielaRanks). */
+export async function getLmxJornadaRanks(userId: string): Promise<Record<string, QuinielaStanding | null>> {
+  const [settings, users] = await Promise.all([
+    prisma.moduleSettings.findMany(),
+    prisma.user.findMany({
+      select: {
+        id: true,
+        payments:  { where: { module: { not: null }, status: "APPROVED" }, select: { module: true } },
+        matchBets: { select: { isCorrect: true, poolModule: true } },
+      },
+    }),
+  ]);
+  const priced = new Set(settings.filter((s) => Number(s.price) > 0).map((s) => String(s.module)));
+  const out: Record<string, QuinielaStanding | null> = {};
+
+  for (const q of LMX_JORNADAS) {
+    const isFree = !priced.has(q.module);
+    const rows = users
+      .map((u) => {
+        const inPool = u.matchBets.filter((b) => b.poolModule === q.module);
+        const participates = isFree ? inPool.length > 0 : u.payments.some((p) => String(p.module) === q.module);
+        const points = inPool.filter((b) => b.isCorrect === true).length;
+        return { id: u.id, participates, points };
+      })
+      .filter((r) => r.participates);
+
+    const mine = rows.find((r) => r.id === userId);
+    if (!mine) { out[q.module] = null; continue; }
+    const rank   = rows.filter((r) => r.points > mine.points).length + 1;
     const ranked = rows.some((r) => r.points > 0);
     out[q.module] = { rank, total: rows.length, points: mine.points, ranked };
   }

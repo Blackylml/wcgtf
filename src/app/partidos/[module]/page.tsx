@@ -5,8 +5,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import { Leaderboard } from "@/components/Leaderboard";
-import { getModuleAccess, getGroupQuinielaRanks, isLocked, getQuinielaLeaderboard, getLastJornadaWinners } from "@/lib/module-access";
-import { GROUP_MATCH_QUINIELAS, KO_QUINIELAS, MODULE_META } from "@/lib/modules";
+import { getModuleAccess, getLmxJornadaRanks, isLocked, getQuinielaLeaderboard, getLastJornadaWinners } from "@/lib/module-access";
+import { GROUP_MATCH_QUINIELAS, KO_QUINIELAS, LMX_JORNADAS, LMX_LIGUILLA, MODULE_META } from "@/lib/modules";
 import { Module, Stage } from "@/generated/prisma/client";
 import { MatchCard } from "../MatchCard";
 import { QuinielaSection } from "../QuinielaSection";
@@ -21,6 +21,8 @@ const KO_ORDER: Stage[] = ["R32", "R16", "QF", "SF", "THIRD", "FINAL"];
 const VALID = new Set<string>([
   ...GROUP_MATCH_QUINIELAS.map((q) => q.module),
   ...KO_QUINIELAS.map((q) => q.module),
+  ...LMX_JORNADAS.map((q) => q.module),
+  ...LMX_LIGUILLA.map((q) => q.module),
   "MATCHES",
 ]);
 
@@ -185,7 +187,125 @@ export default async function QuinielaDetailPage({
     );
   }
 
-  // ── Quiniela de jornada (bolsa) ────────────────────────────────
+  // ── Jornada Liga MX (LMX_J1 … LMX_J17) ────────────────────────
+  const lmxJ = LMX_JORNADAS.find((q) => q.module === mod);
+  if (lmxJ) {
+    const [matches, ranks, participants, winners] = await Promise.all([
+      prisma.match.findMany({
+        where: { stage: "JORNADA", matchNumber: { gte: lmxJ.min, lte: lmxJ.max } },
+        orderBy: { matchNumber: "asc" },
+        include: {
+          homeTeam: { select: { name: true, flag: true, code: true } },
+          awayTeam: { select: { name: true, flag: true, code: true } },
+          bets: { where: { userId, poolModule: mod }, select: { pick: true } },
+        },
+      }),
+      getLmxJornadaRanks(userId),
+      getQuinielaLeaderboard(mod),
+      getLastJornadaWinners(),
+    ]);
+    const winnerIds = [...winners];
+    const lockMs   = matches.length ? Math.min(...matches.map((m) => m.scheduledAt.getTime())) : 0;
+    const lockDate = new Date(lockMs);
+
+    return (
+      <div className="app-shell min-h-screen text-white">
+        <AppHeader />
+        <div className="relative z-10 max-w-2xl mx-auto px-4 pt-5 pb-28">
+          <BackBar />
+          {matches.length === 0 ? (
+            <p className="text-slate-600 text-sm text-center py-10">Esta jornada aún no está disponible.</p>
+          ) : (
+            <QuinielaSection
+              module={mod}
+              label={lmxJ.label}
+              accent={MODULE_META[mod].accent}
+              locked={isLocked(lockDate)}
+              lockLabel={fmtLock(lockMs)}
+              standing={ranks[mod] ?? null}
+              access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
+              matches={matches.map((m) => ({
+                id: m.id,
+                matchNumber: m.matchNumber,
+                homeName: m.homeTeam?.name ?? m.homeLabel ?? "Por definir",
+                homeFlag: m.homeTeam?.flag ?? null,
+                homeCode: m.homeTeam?.code ?? null,
+                awayName: m.awayTeam?.name ?? m.awayLabel ?? "Por definir",
+                awayFlag: m.awayTeam?.flag ?? null,
+                awayCode: m.awayTeam?.code ?? null,
+                userBet: m.bets[0]?.pick ?? null,
+                allowDraw: m.penaltiesAllowed,
+              }))}
+            />
+          )}
+          {matches.length > 0 && <Leaderboard rows={participants} currentUserId={userId} winnerIds={winnerIds} />}
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  // ── Liguilla Liga MX (LMX_QF, LMX_SF, LMX_FINAL) ──────────────
+  const lmxLig = LMX_LIGUILLA.find((q) => q.module === mod);
+  if (lmxLig) {
+    if (!lmxLig.available) redirect("/partidos");
+    const [matches, participants, winners] = await Promise.all([
+      prisma.match.findMany({
+        where: { stage: { in: lmxLig.stages } },
+        orderBy: { matchNumber: "asc" },
+        include: {
+          homeTeam: { select: { name: true, flag: true, code: true } },
+          awayTeam: { select: { name: true, flag: true, code: true } },
+          bets: { where: { userId, poolModule: mod }, select: { pick: true } },
+        },
+      }),
+      getQuinielaLeaderboard(mod),
+      getLastJornadaWinners(),
+    ]);
+    const winnerIds = [...winners];
+    const lockMs   = matches.length ? Math.min(...matches.map((m) => m.scheduledAt.getTime())) : 0;
+    const lockDate = new Date(lockMs);
+
+    return (
+      <div className="app-shell min-h-screen text-white">
+        <AppHeader />
+        <div className="relative z-10 max-w-2xl mx-auto px-4 pt-5 pb-28">
+          <BackBar />
+          {matches.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-slate-400 text-sm">Los partidos de esta ronda aún no están disponibles.</p>
+            </div>
+          ) : (
+            <QuinielaSection
+              module={mod}
+              label={lmxLig.label}
+              accent={MODULE_META[mod].accent}
+              locked={isLocked(lockDate)}
+              lockLabel={fmtLock(lockMs)}
+              standing={null}
+              access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
+              matches={matches.map((m) => ({
+                id: m.id,
+                matchNumber: m.matchNumber,
+                homeName: m.homeTeam?.name ?? m.homeLabel ?? "Por definir",
+                homeFlag: m.homeTeam?.flag ?? null,
+                homeCode: m.homeTeam?.code ?? null,
+                awayName: m.awayTeam?.name ?? m.awayLabel ?? "Por definir",
+                awayFlag: m.awayTeam?.flag ?? null,
+                awayCode: m.awayTeam?.code ?? null,
+                userBet: m.bets[0]?.pick ?? null,
+                allowDraw: m.penaltiesAllowed,
+              }))}
+            />
+          )}
+          {matches.length > 0 && <Leaderboard rows={participants} currentUserId={userId} winnerIds={winnerIds} />}
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  // ── Quiniela de jornada Copa Mundial (bolsa) ────────────────────
   const pool = GROUP_MATCH_QUINIELAS.find((q) => q.module === mod)!;
   const [matches, ranks, participants, winners] = await Promise.all([
     prisma.match.findMany({
@@ -197,7 +317,7 @@ export default async function QuinielaDetailPage({
         bets: { where: { userId, poolModule: mod }, select: { pick: true } },
       },
     }),
-    getGroupQuinielaRanks(userId),
+    getLmxJornadaRanks(userId),
     getQuinielaLeaderboard(mod),
     getLastJornadaWinners(),
   ]);

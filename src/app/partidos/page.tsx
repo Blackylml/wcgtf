@@ -3,23 +3,24 @@ import { prisma } from "@/lib/prisma";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTitle } from "@/components/PageTitle";
-import { getModuleAccess, getGroupQuinielaRanks, isLocked, type ModuleAccess, type QuinielaStanding } from "@/lib/module-access";
-import { GROUP_MATCH_QUINIELAS, KO_QUINIELAS } from "@/lib/modules";
+import { getModuleAccess, getLmxJornadaRanks, isLocked, type ModuleAccess, type QuinielaStanding } from "@/lib/module-access";
+import { LMX_JORNADAS, LMX_LIGUILLA } from "@/lib/modules";
 import { MatchCard } from "./MatchCard";
 import { CalendarDays, ChevronRight, Trophy, Clock, Lock, ListChecks, Flame } from "lucide-react";
 import Link from "next/link";
 
 const ACCENT: Record<string, string> = {
-  blue: "bg-blue-400/10 ring-blue-400/30 text-blue-400 halo-blue",
+  amber:  "bg-amber-400/10 ring-amber-400/30 text-amber-400 halo-gold",
+  blue:   "bg-blue-400/10 ring-blue-400/30 text-blue-400 halo-blue",
   purple: "bg-purple-400/10 ring-purple-400/30 text-purple-400 halo-purple",
-  amber: "bg-amber-400/10 ring-amber-400/30 text-amber-400 halo-amber",
+  green:  "bg-green-400/10 ring-green-400/30 text-green-400 halo-green",
 };
 
 function statusChip(access: ModuleAccess, locked: boolean) {
   if (locked) return { text: "Cerrada", cls: "text-slate-400 bg-white/[0.05] border-white/10" };
-  if (access.price <= 0) return { text: "Gratis", cls: "text-green-300 bg-green-400/10 border-green-400/25" };
-  if (access.approved) return { text: "Participando", cls: "text-green-300 bg-green-400/10 border-green-400/25" };
-  if (access.paymentStatus === "PENDING") return { text: "Pendiente", cls: "text-amber-300 bg-amber-400/10 border-amber-400/25" };
+  if (access.price <= 0) return { text: "Gratis", cls: "text-amber-300 bg-amber-400/10 border-amber-400/25" };
+  if (access.approved) return { text: "Participando", cls: "text-amber-300 bg-amber-400/10 border-amber-400/25" };
+  if (access.paymentStatus === "PENDING") return { text: "Pendiente", cls: "text-slate-300 bg-white/[0.05] border-white/15" };
   return { text: `Pagar $${access.price}`, cls: "text-amber-300 bg-amber-400/10 border-amber-400/25" };
 }
 
@@ -29,36 +30,45 @@ type CardData = {
   subtitle?: string; comingSoon?: boolean;
 };
 
-function QuinielaCard({ d, i }: { d: CardData; i: number }) {
+const fmtLock = (ms: number) =>
+  new Date(ms).toLocaleString("es-MX", {
+    weekday: "short", day: "2-digit", month: "short",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+    timeZone: "America/Monterrey",
+  });
+
+function JornadaCard({ d, i }: { d: CardData; i: number }) {
   const chip = d.comingSoon
-    ? { text: "Próximamente", cls: "text-slate-400 bg-white/[0.05] border-white/10" }
+    ? { text: "Próximamente", cls: "text-slate-500 bg-white/[0.04] border-white/[0.08]" }
     : statusChip(d.access, d.locked);
-  const a = ACCENT[d.accent] ?? ACCENT.blue;
+  const a = ACCENT[d.accent] ?? ACCENT.amber;
+
   if (d.comingSoon) {
     return (
       <div
-        style={{ animationDelay: `${i * 50}ms` }}
-        className="animate-rise flex items-center gap-3 rounded-2xl border border-white/[0.05] bg-white/[0.01] p-4 opacity-50 cursor-not-allowed select-none"
+        style={{ animationDelay: `${i * 40}ms` }}
+        className="animate-rise flex items-center gap-3 rounded-2xl border border-white/[0.05] bg-white/[0.01] p-4 opacity-40 cursor-not-allowed select-none"
       >
         <span className={`grid place-items-center w-11 h-11 rounded-2xl ring-1 shrink-0 ${a}`}>
-          <Trophy size={20} strokeWidth={2} />
+          <CalendarDays size={19} strokeWidth={1.8} />
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-display font-bold text-white leading-tight">{d.label}</p>
-          <p className="text-[11px] text-slate-500 mt-1">Disponible en la siguiente ronda</p>
+          <p className="text-[11px] text-slate-600 mt-0.5">Sin partidos todavía</p>
         </div>
         <span className={`shrink-0 text-[11px] font-semibold rounded-full border px-2.5 py-1 ${chip.cls}`}>{chip.text}</span>
       </div>
     );
   }
+
   return (
     <Link
       href={d.href}
-      style={{ animationDelay: `${i * 50}ms` }}
+      style={{ animationDelay: `${i * 40}ms` }}
       className="animate-rise flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 hover:bg-white/[0.04] hover:border-white/15 transition-all active:scale-[0.99]"
     >
       <span className={`grid place-items-center w-11 h-11 rounded-2xl ring-1 shrink-0 ${a}`}>
-        <Trophy size={20} strokeWidth={2} />
+        <CalendarDays size={19} strokeWidth={1.8} />
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-display font-bold text-white leading-tight">{d.label}</p>
@@ -85,19 +95,20 @@ function QuinielaCard({ d, i }: { d: CardData; i: number }) {
   );
 }
 
-const fmtLock = (ms: number) =>
-  new Date(ms).toLocaleString("es-MX", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Monterrey" });
-
 export default async function PartidosLobby() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const [matches, featured] = await Promise.all([
+  // Todos los partidos Liga MX + partidos individuales con precio
+  const [allMatches, featured] = await Promise.all([
     prisma.match.findMany({
+      where: { stage: "JORNADA" },
       orderBy: { matchNumber: "asc" },
-      select: { matchNumber: true, stage: true, scheduledAt: true, price: true, bets: { where: { userId }, select: { poolModule: true } } },
+      select: {
+        matchNumber: true, stage: true, scheduledAt: true, price: true,
+        bets: { where: { userId }, select: { poolModule: true } },
+      },
     }),
-    // Partidos destacados = apuestas individuales (precio propio), abiertos para apostar.
     prisma.match.findMany({
       where: { price: { gt: 0 } },
       orderBy: { scheduledAt: "asc" },
@@ -109,71 +120,54 @@ export default async function PartidosLobby() {
     }),
   ]);
 
-  const availableKO = KO_QUINIELAS.filter((q) => q.available);
-  const [g1, g2, g2b, g3, ranks, ...koAccesses] = await Promise.all([
-    getModuleAccess(userId, "MATCHES_G1"),
-    getModuleAccess(userId, "MATCHES_G2"),
-    getModuleAccess(userId, "MATCHES_G2B"),
-    getModuleAccess(userId, "MATCHES_G3"),
-    getGroupQuinielaRanks(userId),
-    ...availableKO.map((q) => getModuleAccess(userId, q.module)),
-  ]);
-  const accessByModule: Record<string, ModuleAccess> = {
-    MATCHES_G1: g1, MATCHES_G2: g2, MATCHES_G2B: g2b, MATCHES_G3: g3,
-  };
-  for (let i = 0; i < availableKO.length; i++) {
-    accessByModule[availableKO[i].module] = koAccesses[i];
-  }
+  // Ranks del usuario en cada jornada
+  const ranks = await getLmxJornadaRanks(userId);
 
-  const cards: CardData[] = [];
+  // Acceso por módulo — solo para jornadas con partidos en DB
+  const jornadasConPartidos = LMX_JORNADAS.filter((q) =>
+    allMatches.some((m) => m.matchNumber >= q.min && m.matchNumber <= q.max)
+  );
+  const accessResults = await Promise.all(
+    jornadasConPartidos.map((q) => getModuleAccess(userId, q.module))
+  );
+  const accessByModule: Record<string, ModuleAccess> = {};
+  jornadasConPartidos.forEach((q, i) => { accessByModule[q.module] = accessResults[i]; });
 
-  for (const q of GROUP_MATCH_QUINIELAS) {
-    const qm = matches.filter((m) => m.stage === "GROUP" && m.matchNumber >= q.min && m.matchNumber <= q.max);
-    if (qm.length === 0) continue;
+  // Construir tarjetas de jornadas
+  const jornadaCards: CardData[] = LMX_JORNADAS.map((q) => {
+    const qm = allMatches.filter((m) => m.matchNumber >= q.min && m.matchNumber <= q.max);
+    if (qm.length === 0) {
+      return {
+        href: `/partidos/${q.module}`, label: q.label, accent: "amber",
+        picks: 0, total: 0,
+        access: { price: 0, entryOpen: false, paymentStatus: null, entered: false, approved: false },
+        locked: false, lockLabel: "", rank: null, comingSoon: true,
+      };
+    }
     const lockMs = Math.min(...qm.map((m) => m.scheduledAt.getTime()));
-    cards.push({
+    return {
       href: `/partidos/${q.module}`,
       label: q.label,
-      accent: q.module === "MATCHES_G2B" ? "purple" : "blue",
+      accent: "amber",
       picks: qm.filter((m) => m.bets.some((b) => b.poolModule === q.module)).length,
       total: qm.length,
       access: accessByModule[q.module],
       locked: isLocked(new Date(lockMs)),
       lockLabel: fmtLock(lockMs),
       rank: ranks[q.module] ?? null,
-    });
-  }
+    };
+  });
 
-  // Quinielas por ronda eliminatoria
-  for (const koQ of KO_QUINIELAS) {
-    if (!koQ.available) {
-      cards.push({
-        href: `/partidos/${koQ.module}`,
-        label: koQ.label,
-        accent: "amber",
-        picks: 0, total: 0,
-        access: { price: 0, entryOpen: false, paymentStatus: null, entered: false, approved: false },
-        locked: false, lockLabel: "", rank: null,
-        comingSoon: true,
-      });
-      continue;
-    }
-    const koMatches = matches.filter((m) => (koQ.stages as string[]).includes(m.stage));
-    const access = accessByModule[koQ.module];
-    const lockMs = koMatches.length ? Math.min(...koMatches.map((m) => m.scheduledAt.getTime())) : 0;
-    cards.push({
-      href: `/partidos/${koQ.module}`,
-      label: koQ.label,
-      accent: "amber",
-      picks: koMatches.filter((m) => m.bets.some((b) => b.poolModule === koQ.module)).length,
-      total: koMatches.length,
-      access,
-      locked: koMatches.length > 0 && isLocked(new Date(lockMs)),
-      lockLabel: koMatches.length > 0 ? fmtLock(lockMs) : "",
-      rank: null,
-      subtitle: koMatches.length === 0 ? "Disponible al conocerse los partidos" : undefined,
-    });
-  }
+  // Tarjetas de Liguilla (siempre "próximamente" hasta activar)
+  const liguillaCards: CardData[] = LMX_LIGUILLA.map((q) => ({
+    href: `/partidos/${q.module}`,
+    label: q.label,
+    accent: "amber",
+    picks: 0, total: 0,
+    access: { price: 0, entryOpen: false, paymentStatus: null, entered: false, approved: false },
+    locked: false, lockLabel: "", rank: null,
+    comingSoon: !q.available,
+  }));
 
   return (
     <div className="app-shell min-h-screen text-white">
@@ -181,16 +175,20 @@ export default async function PartidosLobby() {
       <div className="relative z-10 max-w-2xl mx-auto px-4 pt-5 pb-28">
         <PageTitle
           icon={CalendarDays}
-          accent="blue"
-          title="Quinielas"
-          subtitle="Elige una quiniela para llenar tus pronósticos."
+          accent="amber"
+          title="Jornadas"
+          subtitle="Elige una jornada y llena tus pronósticos."
           right={
-            <Link href="/resultados" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 border border-white/12 bg-white/[0.03] rounded-full px-3 py-2 hover:bg-white/[0.07] transition-colors">
-              <ListChecks size={14} className="text-blue-400" /> Resultados
+            <Link
+              href="/resultados"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 border border-white/12 bg-white/[0.03] rounded-full px-3 py-2 hover:bg-white/[0.07] transition-colors"
+            >
+              <ListChecks size={14} className="text-amber-400" /> Resultados
             </Link>
           }
         />
 
+        {/* Partidos con precio individual */}
         {featured.length > 0 && (
           <section className="mb-6">
             <h2 className="animate-rise flex items-center gap-2 font-display text-sm font-bold text-amber-300 mb-2.5">
@@ -201,9 +199,11 @@ export default async function PartidosLobby() {
                 <div key={m.id} className="animate-rise" style={{ animationDelay: `${i * 50}ms` }}>
                   <MatchCard match={{
                     id: m.id, matchNumber: m.matchNumber, homeTeam: m.homeTeam, awayTeam: m.awayTeam,
-                    homeLabel: m.homeLabel, awayLabel: m.awayLabel, stage: m.stage, scheduledAt: m.scheduledAt,
-                    venue: m.venue, isOpen: m.isOpen, price: Number(m.price), penaltiesAllowed: m.penaltiesAllowed,
-                    userBet: m.bets[0]?.pick ?? null, paymentStatus: m.bets[0]?.payment?.status ?? null,
+                    homeLabel: m.homeLabel, awayLabel: m.awayLabel, stage: m.stage,
+                    scheduledAt: m.scheduledAt, venue: m.venue, isOpen: m.isOpen,
+                    price: Number(m.price), penaltiesAllowed: m.penaltiesAllowed,
+                    userBet: m.bets[0]?.pick ?? null,
+                    paymentStatus: m.bets[0]?.payment?.status ?? null,
                     enabled: true, featured: true,
                   }} />
                 </div>
@@ -212,12 +212,16 @@ export default async function PartidosLobby() {
           </section>
         )}
 
-        {cards.length > 0 && (
-          <h2 className="font-display text-sm font-bold text-slate-300 mb-2.5">Quinielas por jornada</h2>
-        )}
-        <div className="space-y-3">
-          {cards.map((d, i) => <QuinielaCard key={d.href} d={d} i={i} />)}
-          {cards.length === 0 && featured.length === 0 && <p className="text-slate-600 text-sm text-center py-10">Aún no hay quinielas disponibles.</p>}
+        {/* Jornadas regulares */}
+        <h2 className="font-display text-sm font-bold text-slate-300 mb-2.5">Jornada regular</h2>
+        <div className="space-y-2.5 mb-6">
+          {jornadaCards.map((d, i) => <JornadaCard key={d.href} d={d} i={i} />)}
+        </div>
+
+        {/* Liguilla */}
+        <h2 className="font-display text-sm font-bold text-slate-300 mb-2.5">Liguilla</h2>
+        <div className="space-y-2.5">
+          {liguillaCards.map((d, i) => <JornadaCard key={d.href} d={d} i={jornadaCards.length + i} />)}
         </div>
       </div>
       <BottomNav />
