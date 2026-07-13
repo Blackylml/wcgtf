@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Flag, LayoutGrid, CalendarDays, Trophy, Star, CreditCard, Users, DollarSign, ListChecks,
+  LayoutDashboard, Flag, LayoutGrid, CalendarDays, Trophy, Star, CreditCard, Users, DollarSign, ListChecks, Wallet, Swords,
 } from "lucide-react";
 
 const NAV = [
@@ -17,6 +17,8 @@ const NAV = [
   { href: "/admin/bracket", label: "Bracket", icon: Trophy },
   { href: "/admin/especiales", label: "Especiales", icon: Star },
   { href: "/admin/pagos", label: "Pagos", icon: CreditCard },
+  { href: "/admin/creditos", label: "Créditos", icon: Wallet },
+  { href: "/admin/duelos", label: "Duelos 1v1", icon: Swords },
 ];
 
 export function AdminNav() {

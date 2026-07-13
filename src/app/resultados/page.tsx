@@ -10,8 +10,9 @@ import { Clock, ListChecks } from "lucide-react";
 const STAGE_LABELS: Record<Stage, string> = {
   GROUP: "Fase de Grupos", R32: "Ronda de 32", R16: "Ronda de 16", QF: "Cuartos",
   SF: "Semifinales", THIRD: "Tercer lugar", FINAL: "Final",
+  JORNADA: "Jornada Liga MX", LIG_QF: "Liguilla — Cuartos", LIG_SF: "Liguilla — Semis", LIG_FINAL: "Liguilla — Final",
 };
-const STAGE_ORDER: Stage[] = ["GROUP", "R32", "R16", "QF", "SF", "THIRD", "FINAL"];
+const STAGE_ORDER: Stage[] = ["GROUP", "R32", "R16", "QF", "SF", "THIRD", "FINAL", "JORNADA", "LIG_QF", "LIG_SF", "LIG_FINAL"];
 
 export default async function ResultadosPage() {
   await auth();

@@ -15,6 +15,7 @@ import Link from "next/link";
 
 const STAGE_LABELS: Record<Stage, string> = {
   GROUP: "Grupos", R32: "R32", R16: "R16", QF: "Cuartos", SF: "Semis", THIRD: "3er lugar", FINAL: "Final",
+  JORNADA: "Jornada", LIG_QF: "Cuartos", LIG_SF: "Semis", LIG_FINAL: "Final",
 };
 const KO_ORDER: Stage[] = ["R32", "R16", "QF", "SF", "THIRD", "FINAL"];
 const VALID = new Set<string>([

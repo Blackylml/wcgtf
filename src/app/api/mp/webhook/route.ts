@@ -61,10 +61,31 @@ export async function POST(req: NextRequest) {
       : mpPayment.status === "cancelled" ? "CANCELLED"
       : "PENDING";
 
+    const wasApproved = payment.status !== "APPROVED" && status === "APPROVED";
+
     await prisma.payment.update({
       where: { id: payment.id },
       data: { status, mpPaymentId: String(dataId) },
     });
+
+    // Si es una recarga de créditos recién aprobada, acreditar al usuario
+    if (wasApproved && payment.isCreditTopup) {
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: payment.userId },
+          data: { credits: { increment: payment.amount } },
+        }),
+        prisma.creditTransaction.create({
+          data: {
+            userId: payment.userId,
+            amount: payment.amount,
+            type: "DEPOSIT_MP",
+            description: `Recarga vía MercadoPago`,
+            refId: String(dataId),
+          },
+        }),
+      ]);
+    }
   } catch (e) {
     console.error("MP webhook error:", e);
   }

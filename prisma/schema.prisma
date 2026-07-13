@@ -16,6 +16,7 @@ model User {
   emailVerified DateTime?
   image         String?
   role          Role      @default(USER)
+  credits       Decimal   @default(0) @db.Decimal(10, 2)
   createdAt     DateTime  @default(now())
 
   accounts     Account[]
@@ -27,6 +28,11 @@ model User {
   payments     Payment[]
   jornadaReactions JornadaReaction[]
   koTiebreakers    KoTiebreaker[]
+  creditTransactions CreditTransaction[]
+  duelEntries        DuelEntry[]
+  duelsAsUser1       DuelPair[] @relation("DuelPairUser1")
+  duelsAsUser2       DuelPair[] @relation("DuelPairUser2")
+  duelsWon           DuelPair[] @relation("DuelPairWinner")
 }
 
 // Reacciones (boo / vamos) al ganador de una jornada. Una por usuario por jornada.
@@ -289,6 +295,7 @@ model Payment {
   matchBets   MatchBet[]
   bracketBets BracketBet[]
   specialBets SpecialBet[]
+  isCreditTopup Boolean    @default(false)
 }
 
 enum PaymentStatus {
@@ -368,4 +375,74 @@ model KoRoundResult {
   topScorerTeam    String? // equipo que más anotó en la ronda
   firstHalfGoals   Int?    // total de goles en 1er tiempo en la ronda
   earliestGoalTeam String? // equipo que anotó primero en la ronda
+}
+
+// ─── Créditos ────────────────────────────────────────────────────────────────
+
+model CreditTransaction {
+  id          String       @id @default(cuid())
+  userId      String
+  amount      Decimal      @db.Decimal(10, 2) // positivo = ingreso, negativo = gasto
+  type        CreditTxType
+  description String?
+  refId       String?      // mpPaymentId, id de duel, nota admin, etc.
+  createdAt   DateTime     @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum CreditTxType {
+  DEPOSIT_MP     // recarga vía MercadoPago
+  DEPOSIT_ADMIN  // otorgado manualmente por admin
+  SPEND_ENTRY    // usado para pagar entrada a un módulo/duelo
+  REFUND         // devolución (ej: quedó sin pareja en 1v1)
+  PRIZE_WIN      // ganó un duelo 1v1
+}
+
+// ─── Duelos 1v1 ──────────────────────────────────────────────────────────────
+
+model DuelSession {
+  id          String      @id @default(cuid())
+  module      Module
+  label       String      // ej. "Jornada 1 — 1v1"
+  entryFee    Decimal     @db.Decimal(10, 2)
+  houseCutPct Int         @default(10) // % que se queda la plataforma (0-100)
+  isOpen      Boolean     @default(true)
+  pairingDone Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+
+  entries     DuelEntry[]
+  pairs       DuelPair[]
+}
+
+model DuelEntry {
+  id        String      @id @default(cuid())
+  sessionId String
+  userId    String
+  paired    Boolean     @default(false)
+  refunded  Boolean     @default(false)
+  createdAt DateTime    @default(now())
+
+  session   DuelSession @relation(fields: [sessionId], references: [id])
+  user      User        @relation(fields: [userId], references: [id])
+
+  @@unique([sessionId, userId])
+}
+
+model DuelPair {
+  id         String      @id @default(cuid())
+  sessionId  String
+  user1Id    String
+  user2Id    String
+  prizePool  Decimal     @db.Decimal(10, 2) // lo que recibirá el ganador (ya descontado el corte)
+  score1     Int?        // puntos de user1
+  score2     Int?        // puntos de user2
+  winnerId   String?
+  prizeGiven Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+
+  session    DuelSession @relation(fields: [sessionId], references: [id])
+  user1      User        @relation("DuelPairUser1", fields: [user1Id], references: [id])
+  user2      User        @relation("DuelPairUser2", fields: [user2Id], references: [id])
+  winner     User?       @relation("DuelPairWinner", fields: [winnerId], references: [id])
 }
