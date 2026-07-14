@@ -50,7 +50,7 @@ export function MatchCard({ match }: { match: Match }) {
   const homeName = match.homeTeam?.name ?? match.homeLabel ?? "Por definir";
   const awayName = match.awayTeam?.name ?? match.awayLabel ?? "Por definir";
 
-  const showDraw = match.stage === "GROUP" || match.penaltiesAllowed;
+  const showDraw = match.stage === "GROUP" || match.stage === "JORNADA" || match.penaltiesAllowed;
   const picks: MatchPick[] = ["HOME", ...(showDraw ? (["DRAW"] as MatchPick[]) : []), "AWAY"];
 
   const date = new Date(match.scheduledAt);
