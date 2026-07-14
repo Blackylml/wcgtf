@@ -163,7 +163,7 @@ function HeadToHead({
     statusText = "Ganó el rival · Suerte la próxima";
     statusCls = "bg-red-400/[0.08] text-red-400 border border-red-400/20";
   } else if (pair.isTie) {
-    statusText = "⚖ Empate — el admin resolverá";
+    statusText = `⚖ Empate · +$${(pair.prizePool / 2).toFixed(0)} créditos devueltos`;
     statusCls = "bg-amber-400/10 text-amber-400 border border-amber-400/20";
   } else {
     statusText = `Premio: $${prize.toFixed(0)} · En juego`;

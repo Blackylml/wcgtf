@@ -83,12 +83,15 @@ export async function settleDuelPrizes(sessionId: string) {
 
     if (s1 > s2) winnerId = pair.user1Id;
     else if (s2 > s1) winnerId = pair.user2Id;
-    // empate: nadie gana por ahora (quedará winnerId null, admin puede revisar)
+    // empate: se divide el prizePool entre ambos
+
+    const isTie = s1 === s2;
+    const halfPrize = Number(pair.prizePool) / 2;
 
     txns.push(
       prisma.duelPair.update({
         where: { id: pair.id },
-        data: { score1: s1, score2: s2, winnerId, prizeGiven: !!winnerId },
+        data: { score1: s1, score2: s2, winnerId, prizeGiven: !!(winnerId || isTie) },
       }),
     );
 
@@ -106,6 +109,17 @@ export async function settleDuelPrizes(sessionId: string) {
             description: `Premio 1v1 — ${session.label}`,
             refId: pair.id,
           },
+        }),
+      );
+    } else if (isTie) {
+      txns.push(
+        prisma.user.update({ where: { id: pair.user1Id }, data: { credits: { increment: halfPrize } } }),
+        prisma.user.update({ where: { id: pair.user2Id }, data: { credits: { increment: halfPrize } } }),
+        prisma.creditTransaction.create({
+          data: { userId: pair.user1Id, amount: halfPrize, type: "PRIZE_WIN", description: `Empate 1v1 — ${session.label}`, refId: pair.id },
+        }),
+        prisma.creditTransaction.create({
+          data: { userId: pair.user2Id, amount: halfPrize, type: "PRIZE_WIN", description: `Empate 1v1 — ${session.label}`, refId: pair.id },
         }),
       );
     }
