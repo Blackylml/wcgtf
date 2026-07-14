@@ -234,7 +234,7 @@ export default async function QuinielaDetailPage({
                 awayFlag: m.awayTeam?.flag ?? null,
                 awayCode: m.awayTeam?.code ?? null,
                 userBet: m.bets[0]?.pick ?? null,
-                allowDraw: m.penaltiesAllowed,
+                allowDraw: true, // jornada regular: empate siempre aplica
               }))}
             />
           )}
