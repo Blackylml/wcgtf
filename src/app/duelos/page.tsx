@@ -87,6 +87,7 @@ export default async function DuelosPage() {
                   key={s.id}
                   session={{
                     id: s.id,
+                    module: s.module,
                     label: s.label,
                     entryFee: Number(s.entryFee),
                     houseCutPct: s.houseCutPct,

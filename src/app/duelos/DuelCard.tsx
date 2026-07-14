@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
-import { Swords, Users, Clock, Loader2, Trophy } from "lucide-react";
+import { Swords, Users, Clock, Loader2, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { enterDuelSession } from "./actions";
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 
 type SessionInfo = {
   id: string;
+  module: string;
   label: string;
   entryFee: number;
   houseCutPct: number;
@@ -219,6 +221,26 @@ function HeadToHead({
   );
 }
 
+// ── Picks Link ──────────────────────────────────────────────────────────────────
+
+function PicksLink({ module, label, highlight = false }: { module: string; label: string; highlight?: boolean }) {
+  return (
+    <Link
+      href={`/partidos/${module}`}
+      className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${
+        highlight
+          ? "bg-amber-400/[0.08] border-amber-400/25 hover:bg-amber-400/[0.14]"
+          : "bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.06]"
+      }`}
+    >
+      <span className={`text-sm font-semibold ${highlight ? "text-amber-300" : "text-slate-400"}`}>
+        {label}
+      </span>
+      <ArrowRight size={15} className={highlight ? "text-amber-400" : "text-slate-600"} />
+    </Link>
+  );
+}
+
 // ── Main Component ──────────────────────────────────────────────────────────────
 
 export function DuelCard({
@@ -305,20 +327,29 @@ export function DuelCard({
 
     if (userPair && rival) {
       return (
-        <HeadToHead pair={userPair} rival={rival} currentUser={currentUser} prize={prize} />
+        <div className="space-y-3">
+          <HeadToHead pair={userPair} rival={rival} currentUser={currentUser} prize={prize} />
+          {/* Si aún no hay scores, el partido no ha terminado — recordar hacer picks */}
+          {userPair.myScore == null && (
+            <PicksLink module={session.module} label="Ver / cambiar mis picks" />
+          )}
+        </div>
       );
     }
 
     if (userEntry) {
       return (
-        <div className="flex items-center gap-3 py-2">
-          <Clock size={16} className="text-amber-400 shrink-0" />
-          <div>
-            <p className="text-sm font-semibold">Inscrito · Esperando ruleta</p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              El emparejamiento ocurre al inicio de la jornada
-            </p>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Clock size={15} className="text-amber-400 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold">Inscrito · Esperando ruleta</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                La ruleta asigna tu rival al iniciar el primer partido
+              </p>
+            </div>
           </div>
+          <PicksLink module={session.module} label="Hacer mis picks ahora" highlight />
         </div>
       );
     }
@@ -360,6 +391,8 @@ export function DuelCard({
               )}
             </button>
             {enterError && <p className="text-xs text-red-400 text-center">{enterError}</p>}
+            {/* Picks son independientes del duelo — siempre disponibles */}
+            <PicksLink module={session.module} label="Hacer picks sin costo" />
           </>
         ) : (
           <p className="text-xs text-center text-slate-600 py-1">Inscripción cerrada</p>
