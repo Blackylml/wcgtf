@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { createDuelSession, toggleDuelSession, pairDuelEntries, settleDuelPrizes } from "./actions";
+import { createDuelSession, toggleDuelSession, pairDuelEntries, settleDuelPrizes, configureTiebreaker, setTiebreakerResults } from "./actions";
 
 // Sólo los módulos Liga MX disponibles para duelos
 const LMX_MODULES = [
@@ -134,6 +134,83 @@ export default async function DuelosAdminPage() {
                     </form>
                   )}
                 </div>
+
+                {/* Desempate */}
+                <details className="mb-3">
+                  <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none">
+                    {s.hasTiebreaker ? "🏆 Desempate configurado" : "⚙ Configurar desempate"}
+                  </summary>
+                  <div className="mt-2 space-y-2 border rounded p-3 bg-amber-50/30">
+                    <form
+                      action={async (fd) => {
+                        "use server";
+                        await configureTiebreaker(
+                          s.id,
+                          fd.get("hasTiebreaker") === "on",
+                          fd.get("homeLabel") as string,
+                          fd.get("awayLabel") as string,
+                          fd.get("dateLabel") as string,
+                        );
+                      }}
+                      className="space-y-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <input name="hasTiebreaker" type="checkbox" defaultChecked={s.hasTiebreaker} className="w-4 h-4" />
+                        <Label className="text-xs">Activar desempate</Label>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-gray-500">Local</Label>
+                          <Input name="homeLabel" defaultValue={s.tbHomeLabel ?? ""} placeholder="España" className="text-xs h-7" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-gray-500">Visitante</Label>
+                          <Input name="awayLabel" defaultValue={s.tbAwayLabel ?? ""} placeholder="Argentina" className="text-xs h-7" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-gray-500">Fecha</Label>
+                          <Input name="dateLabel" defaultValue={s.tbDateLabel ?? ""} placeholder="Final · 19 jul" className="text-xs h-7" />
+                        </div>
+                      </div>
+                      <Button type="submit" size="sm" variant="outline" className="text-xs h-7">
+                        Guardar config
+                      </Button>
+                    </form>
+
+                    <form
+                      action={async (fd) => {
+                        "use server";
+                        await setTiebreakerResults(s.id, fd.get("htResult") as string, fd.get("ftResult") as string);
+                      }}
+                      className="space-y-2 border-t pt-2"
+                    >
+                      <p className="text-[10px] font-semibold text-gray-500">Resultados de la Final</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-gray-500">Medio tiempo</Label>
+                          <select name="htResult" defaultValue={s.tbHtResult ?? ""} className="w-full border rounded px-2 py-1 text-xs">
+                            <option value="">— sin resultado —</option>
+                            <option value="HOME">Local</option>
+                            <option value="DRAW">Empate</option>
+                            <option value="AWAY">Visitante</option>
+                          </select>
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-gray-500">Tiempo completo</Label>
+                          <select name="ftResult" defaultValue={s.tbFtResult ?? ""} className="w-full border rounded px-2 py-1 text-xs">
+                            <option value="">— sin resultado —</option>
+                            <option value="HOME">Local</option>
+                            <option value="DRAW">Empate</option>
+                            <option value="AWAY">Visitante</option>
+                          </select>
+                        </div>
+                      </div>
+                      <Button type="submit" size="sm" variant="outline" className="text-xs h-7 text-amber-700 border-amber-300">
+                        Registrar resultados
+                      </Button>
+                    </form>
+                  </div>
+                </details>
 
                 {/* Pares */}
                 {s.pairs.length > 0 && (

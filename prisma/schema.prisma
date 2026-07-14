@@ -33,6 +33,7 @@ model User {
   duelsAsUser1       DuelPair[] @relation("DuelPairUser1")
   duelsAsUser2       DuelPair[] @relation("DuelPairUser2")
   duelsWon           DuelPair[] @relation("DuelPairWinner")
+  tiebreakerPicks    DuelTiebreakerPick[]
 }
 
 // Reacciones (boo / vamos) al ganador de una jornada. Una por usuario por jornada.
@@ -411,8 +412,31 @@ model DuelSession {
   pairingDone Boolean     @default(false)
   createdAt   DateTime    @default(now())
 
-  entries     DuelEntry[]
-  pairs       DuelPair[]
+  // ── Desempate ─────────────────────────────────────────────
+  hasTiebreaker Boolean    @default(false)
+  tbHomeLabel   String?    // equipo local  (ej. "España")
+  tbAwayLabel   String?    // equipo visitante (ej. "Argentina")
+  tbDateLabel   String?    // etiqueta corta (ej. "Final · 19 jul")
+  tbHtResult    MatchPick? // resultado al medio tiempo (null = no disponible aún)
+  tbFtResult    MatchPick? // resultado al tiempo completo (null = no disponible aún)
+
+  entries         DuelEntry[]
+  pairs           DuelPair[]
+  tiebreakerPicks DuelTiebreakerPick[]
+}
+
+model DuelTiebreakerPick {
+  id        String      @id @default(cuid())
+  sessionId String
+  userId    String
+  htPick    MatchPick
+  ftPick    MatchPick
+  createdAt DateTime    @default(now())
+
+  session   DuelSession @relation(fields: [sessionId], references: [id])
+  user      User        @relation(fields: [userId], references: [id])
+
+  @@unique([sessionId, userId])
 }
 
 model DuelEntry {

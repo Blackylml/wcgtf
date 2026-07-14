@@ -11,6 +11,37 @@ async function requireAdmin() {
   if (session?.user?.role !== "ADMIN") throw new Error("No autorizado");
 }
 
+export async function configureTiebreaker(
+  sessionId: string,
+  hasTiebreaker: boolean,
+  homeLabel: string,
+  awayLabel: string,
+  dateLabel: string,
+) {
+  await requireAdmin();
+  await prisma.duelSession.update({
+    where: { id: sessionId },
+    data: { hasTiebreaker, tbHomeLabel: homeLabel || null, tbAwayLabel: awayLabel || null, tbDateLabel: dateLabel || null },
+  });
+  revalidatePath("/admin/duelos");
+  revalidatePath("/duelos");
+}
+
+export async function setTiebreakerResults(
+  sessionId: string,
+  htResult: string,
+  ftResult: string,
+) {
+  await requireAdmin();
+  const data: Record<string, unknown> = {};
+  if (htResult) data.tbHtResult = htResult;
+  if (ftResult) data.tbFtResult = ftResult;
+  if (Object.keys(data).length === 0) return;
+  await prisma.duelSession.update({ where: { id: sessionId }, data });
+  revalidatePath("/admin/duelos");
+  revalidatePath("/duelos");
+}
+
 export async function createDuelSession(
   module: Module,
   label: string,
@@ -60,6 +91,12 @@ export async function settleDuelPrizes(sessionId: string) {
   const session = await prisma.duelSession.findUnique({ where: { id: sessionId } });
   if (!session) return;
 
+  // Picks de desempate si la sesión los tiene
+  const tbPicks = session.hasTiebreaker
+    ? await prisma.duelTiebreakerPick.findMany({ where: { sessionId } })
+    : [];
+  const tbMap = new Map(tbPicks.map((p) => [p.userId, p]));
+
   // Puntos de cada usuario en el módulo (MatchBets correctas)
   const allUserIds = [...new Set(pairs.flatMap((p) => [p.user1Id, p.user2Id]))];
   const bets = await prisma.matchBet.findMany({
@@ -83,9 +120,21 @@ export async function settleDuelPrizes(sessionId: string) {
 
     if (s1 > s2) winnerId = pair.user1Id;
     else if (s2 > s1) winnerId = pair.user2Id;
-    // empate: se divide el prizePool entre ambos
+    else if (session.hasTiebreaker && session.tbHtResult && session.tbFtResult) {
+      // Desempate: puntos del pick de la Final (HT + FT)
+      const tb1 = tbMap.get(pair.user1Id);
+      const tb2 = tbMap.get(pair.user2Id);
+      const tbScore = (pick: typeof tb1) =>
+        (pick?.htPick === session.tbHtResult ? 1 : 0) +
+        (pick?.ftPick === session.tbFtResult ? 1 : 0);
+      const ts1 = tbScore(tb1);
+      const ts2 = tbScore(tb2);
+      if (ts1 > ts2) winnerId = pair.user1Id;
+      else if (ts2 > ts1) winnerId = pair.user2Id;
+      // si aún empatan: dividir
+    }
 
-    const isTie = s1 === s2;
+    const isTie = s1 === s2 && winnerId === null;
     const halfPrize = Number(pair.prizePool) / 2;
 
     txns.push(
