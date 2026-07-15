@@ -17,11 +17,22 @@ export async function configureTiebreaker(
   homeLabel: string,
   awayLabel: string,
   dateLabel: string,
+  home2Label: string,
+  away2Label: string,
+  date2Label: string,
 ) {
   await requireAdmin();
   await prisma.duelSession.update({
     where: { id: sessionId },
-    data: { hasTiebreaker, tbHomeLabel: homeLabel || null, tbAwayLabel: awayLabel || null, tbDateLabel: dateLabel || null },
+    data: {
+      hasTiebreaker,
+      tbHomeLabel: homeLabel || null,
+      tbAwayLabel: awayLabel || null,
+      tbDateLabel: dateLabel || null,
+      tb2HomeLabel: home2Label || null,
+      tb2AwayLabel: away2Label || null,
+      tb2DateLabel: date2Label || null,
+    },
   });
   revalidatePath("/admin/duelos");
   revalidatePath("/duelos");
@@ -29,13 +40,19 @@ export async function configureTiebreaker(
 
 export async function setTiebreakerResults(
   sessionId: string,
+  matchIdx: number,
   htResult: string,
   ftResult: string,
 ) {
   await requireAdmin();
   const data: Record<string, unknown> = {};
-  if (htResult) data.tbHtResult = htResult;
-  if (ftResult) data.tbFtResult = ftResult;
+  if (matchIdx === 0) {
+    if (htResult) data.tbHtResult = htResult;
+    if (ftResult) data.tbFtResult = ftResult;
+  } else {
+    if (htResult) data.tb2HtResult = htResult;
+    if (ftResult) data.tb2FtResult = ftResult;
+  }
   if (Object.keys(data).length === 0) return;
   await prisma.duelSession.update({ where: { id: sessionId }, data });
   revalidatePath("/admin/duelos");
@@ -91,11 +108,16 @@ export async function settleDuelPrizes(sessionId: string) {
   const session = await prisma.duelSession.findUnique({ where: { id: sessionId } });
   if (!session) return;
 
-  // Picks de desempate si la sesión los tiene
+  // Picks de desempate (matchIdx 0 y 1) indexados por userId
   const tbPicks = session.hasTiebreaker
     ? await prisma.duelTiebreakerPick.findMany({ where: { sessionId } })
     : [];
-  const tbMap = new Map(tbPicks.map((p) => [p.userId, p]));
+  // tbMap: userId → { 0: pick, 1: pick }
+  const tbMap = new Map<string, Map<number, typeof tbPicks[0]>>();
+  for (const p of tbPicks) {
+    if (!tbMap.has(p.userId)) tbMap.set(p.userId, new Map());
+    tbMap.get(p.userId)!.set(p.matchIdx, p);
+  }
 
   // Puntos de cada usuario en el módulo (MatchBets correctas)
   const allUserIds = [...new Set(pairs.flatMap((p) => [p.user1Id, p.user2Id]))];
@@ -120,15 +142,21 @@ export async function settleDuelPrizes(sessionId: string) {
 
     if (s1 > s2) winnerId = pair.user1Id;
     else if (s2 > s1) winnerId = pair.user2Id;
-    else if (session.hasTiebreaker && session.tbHtResult && session.tbFtResult) {
-      // Desempate: puntos del pick de la Final (HT + FT)
-      const tb1 = tbMap.get(pair.user1Id);
-      const tb2 = tbMap.get(pair.user2Id);
-      const tbScore = (pick: typeof tb1) =>
-        (pick?.htPick === session.tbHtResult ? 1 : 0) +
-        (pick?.ftPick === session.tbFtResult ? 1 : 0);
-      const ts1 = tbScore(tb1);
-      const ts2 = tbScore(tb2);
+    else if (session.hasTiebreaker) {
+      // Desempate: sumar picks correctos de ambos partidos (HT+FT × 2 = máx 4 pts)
+      const tbScore = (userId: string) => {
+        const picks = tbMap.get(userId);
+        let score = 0;
+        const p0 = picks?.get(0);
+        if (p0 && session.tbHtResult) score += p0.htPick === session.tbHtResult ? 1 : 0;
+        if (p0 && session.tbFtResult) score += p0.ftPick === session.tbFtResult ? 1 : 0;
+        const p1 = picks?.get(1);
+        if (p1 && session.tb2HtResult) score += p1.htPick === session.tb2HtResult ? 1 : 0;
+        if (p1 && session.tb2FtResult) score += p1.ftPick === session.tb2FtResult ? 1 : 0;
+        return score;
+      };
+      const ts1 = tbScore(pair.user1Id);
+      const ts2 = tbScore(pair.user2Id);
       if (ts1 > ts2) winnerId = pair.user1Id;
       else if (ts2 > ts1) winnerId = pair.user2Id;
       // si aún empatan: dividir

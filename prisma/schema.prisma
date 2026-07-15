@@ -412,13 +412,20 @@ model DuelSession {
   pairingDone Boolean     @default(false)
   createdAt   DateTime    @default(now())
 
-  // ── Desempate ─────────────────────────────────────────────
+  // ── Desempate (hasta 2 partidos, cada uno con HT+FT) ──────
   hasTiebreaker Boolean    @default(false)
-  tbHomeLabel   String?    // equipo local  (ej. "España")
-  tbAwayLabel   String?    // equipo visitante (ej. "Argentina")
-  tbDateLabel   String?    // etiqueta corta (ej. "Final · 19 jul")
-  tbHtResult    MatchPick? // resultado al medio tiempo (null = no disponible aún)
-  tbFtResult    MatchPick? // resultado al tiempo completo (null = no disponible aún)
+  // Partido 1 (ej. Final del Mundial)
+  tbHomeLabel   String?
+  tbAwayLabel   String?
+  tbDateLabel   String?
+  tbHtResult    MatchPick?
+  tbFtResult    MatchPick?
+  // Partido 2 (ej. Chivas vs Toluca)
+  tb2HomeLabel  String?
+  tb2AwayLabel  String?
+  tb2DateLabel  String?
+  tb2HtResult   MatchPick?
+  tb2FtResult   MatchPick?
 
   entries         DuelEntry[]
   pairs           DuelPair[]
@@ -429,6 +436,7 @@ model DuelTiebreakerPick {
   id        String      @id @default(cuid())
   sessionId String
   userId    String
+  matchIdx  Int         @default(0) // 0 = partido 1, 1 = partido 2
   htPick    MatchPick
   ftPick    MatchPick
   createdAt DateTime    @default(now())
@@ -436,7 +444,7 @@ model DuelTiebreakerPick {
   session   DuelSession @relation(fields: [sessionId], references: [id])
   user      User        @relation(fields: [userId], references: [id])
 
-  @@unique([sessionId, userId])
+  @@unique([sessionId, userId, matchIdx])
 }
 
 model DuelEntry {

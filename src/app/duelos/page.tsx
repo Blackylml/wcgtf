@@ -35,7 +35,7 @@ export default async function DuelosPage() {
     }),
     prisma.duelTiebreakerPick.findMany({
       where: { userId },
-      select: { sessionId: true, htPick: true, ftPick: true },
+      select: { sessionId: true, matchIdx: true, htPick: true, ftPick: true },
     }),
   ]);
 
@@ -132,13 +132,24 @@ export default async function DuelosPage() {
                   userCredits={credits}
                   currentUser={currentUser}
                   tiebreakerInfo={s.hasTiebreaker ? {
-                    homeLabel: s.tbHomeLabel ?? "Local",
-                    awayLabel: s.tbAwayLabel ?? "Visitante",
-                    dateLabel: s.tbDateLabel ?? "",
-                    htResult: s.tbHtResult ?? null,
-                    ftResult: s.tbFtResult ?? null,
+                    matches: [
+                      {
+                        homeLabel: s.tbHomeLabel ?? "Local",
+                        awayLabel: s.tbAwayLabel ?? "Visitante",
+                        dateLabel: s.tbDateLabel ?? "",
+                        htResult: s.tbHtResult ?? null,
+                        ftResult: s.tbFtResult ?? null,
+                      },
+                      ...(s.tb2HomeLabel ? [{
+                        homeLabel: s.tb2HomeLabel,
+                        awayLabel: s.tb2AwayLabel ?? "Visitante",
+                        dateLabel: s.tb2DateLabel ?? "",
+                        htResult: s.tb2HtResult ?? null,
+                        ftResult: s.tb2FtResult ?? null,
+                      }] : []),
+                    ],
                   } : null}
-                  myTiebreakerPick={tbPickMap.get(s.id) ?? null}
+                  myTiebreakerPicks={myTiebreakerPicks.filter((p) => p.sessionId === s.id)}
                 />
               );
             })}
