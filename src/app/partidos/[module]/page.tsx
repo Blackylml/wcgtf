@@ -195,7 +195,7 @@ export default async function QuinielaDetailPage({
         where: {
           stage: "JORNADA",
           OR: [
-            { matchNumber: { gte: lmxJ.min, lte: lmxJ.max } },
+            { matchNumber: { gte: lmxJ.min, lte: lmxJ.max, ...(lmxJ.exclude?.length ? { notIn: lmxJ.exclude } : {}) } },
             ...(lmxJ.extra?.length ? [{ matchNumber: { in: lmxJ.extra } }] : []),
           ],
         },
