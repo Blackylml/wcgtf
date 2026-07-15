@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Manrope, Outfit, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { FloatingSocial } from "@/components/FloatingSocial";
 
 // Body: refined, characterful. Display: geometric/sporty. Mono: scoreboard digits.
 const sans = Manrope({ variable: "--font-sans", subsets: ["latin"], display: "swap" });
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col bg-[#070b16]">
         {children}
         <InstallPrompt />
+        <FloatingSocial />
         <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}` }} />
       </body>
     </html>
