@@ -13,7 +13,7 @@ export default async function DuelosPage() {
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  const [sessions, user, myTiebreakerPicks] = await Promise.all([
+  const [sessions, user] = await Promise.all([
     prisma.duelSession.findMany({
       orderBy: { createdAt: "asc" },
       include: {
@@ -33,17 +33,12 @@ export default async function DuelosPage() {
       where: { id: userId },
       select: { credits: true, name: true, image: true },
     }),
-    prisma.duelTiebreakerPick.findMany({
-      where: { userId },
-      select: { sessionId: true, matchIdx: true, htPick: true, ftPick: true },
-    }),
   ]);
 
   // Lazy auto-pair: if any session's jornada has started and pairing hasn't
   // happened yet, pair now. Safe to call on every render (atomic DB claim).
   await autoPairReadySessions();
 
-  const tbPickMap = new Map(myTiebreakerPicks.map((p) => [p.sessionId, p]));
   const credits = Number(user?.credits ?? 0);
   const currentUser = {
     name: user?.name ?? session.user.name ?? "Tú",
@@ -131,25 +126,6 @@ export default async function DuelosPage() {
                   }))}
                   userCredits={credits}
                   currentUser={currentUser}
-                  tiebreakerInfo={s.hasTiebreaker ? {
-                    matches: [
-                      {
-                        homeLabel: s.tbHomeLabel ?? "Local",
-                        awayLabel: s.tbAwayLabel ?? "Visitante",
-                        dateLabel: s.tbDateLabel ?? "",
-                        htResult: s.tbHtResult ?? null,
-                        ftResult: s.tbFtResult ?? null,
-                      },
-                      ...(s.tb2HomeLabel ? [{
-                        homeLabel: s.tb2HomeLabel,
-                        awayLabel: s.tb2AwayLabel ?? "Visitante",
-                        dateLabel: s.tb2DateLabel ?? "",
-                        htResult: s.tb2HtResult ?? null,
-                        ftResult: s.tb2FtResult ?? null,
-                      }] : []),
-                    ],
-                  } : null}
-                  myTiebreakerPicks={myTiebreakerPicks.filter((p) => p.sessionId === s.id)}
                 />
               );
             })}

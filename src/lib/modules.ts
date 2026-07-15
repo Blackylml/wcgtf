@@ -77,9 +77,10 @@ export function koQuinielaStages(module: Module): Stage[] | null {
   return KO_QUINIELAS.find((q) => q.module === module)?.stages ?? null;
 }
 
-/** Jornadas de Liga MX Apertura 2026 (J1–J17). 9 partidos cada una, matchNumber 1001+. */
-export const LMX_JORNADAS: { module: Module; label: string; min: number; max: number }[] = [
-  { module: "LMX_J1",  label: "Jornada 1",  min: 1001, max: 1009 },
+/** Jornadas de Liga MX Apertura 2026 (J1–J17). 9 partidos cada una, matchNumber 1001+.
+ * `extra` permite añadir matchNumbers fuera del rango min-max (ej. picks de desempate). */
+export const LMX_JORNADAS: { module: Module; label: string; min: number; max: number; extra?: number[] }[] = [
+  { module: "LMX_J1",  label: "Jornada 1",  min: 1001, max: 1009, extra: [9001, 9002, 9003, 9004] },
   { module: "LMX_J2",  label: "Jornada 2",  min: 1010, max: 1018 },
   { module: "LMX_J3",  label: "Jornada 3",  min: 1019, max: 1027 },
   { module: "LMX_J4",  label: "Jornada 4",  min: 1028, max: 1036 },

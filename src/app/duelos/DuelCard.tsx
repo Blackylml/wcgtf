@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
-import { Swords, Users, Clock, Loader2, ArrowRight, Trophy } from "lucide-react";
+import { Swords, Users, Clock, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { enterDuelSession, saveTiebreakerPick } from "./actions";
-import type { MatchPick } from "@/generated/prisma/client";
+import { enterDuelSession } from "./actions";
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 
@@ -33,17 +32,6 @@ type UserPairInfo = {
 type PersonInfo = { id: string; name: string; image: string | null };
 type SimpleUser = { name: string; image: string | null };
 
-type TiebreakerMatch = {
-  homeLabel: string;
-  awayLabel: string;
-  dateLabel: string;
-  htResult: MatchPick | null;
-  ftResult: MatchPick | null;
-};
-
-type TiebreakerInfo = { matches: TiebreakerMatch[] };
-type TiebreakerPickRow = { sessionId: string; matchIdx: number; htPick: MatchPick; ftPick: MatchPick };
-
 interface DuelCardProps {
   session: SessionInfo;
   userEntry: { paired: boolean; refunded: boolean } | null;
@@ -52,8 +40,6 @@ interface DuelCardProps {
   participants: SimpleUser[];
   userCredits: number;
   currentUser: SimpleUser;
-  tiebreakerInfo: TiebreakerInfo | null;
-  myTiebreakerPicks: TiebreakerPickRow[];
 }
 
 // ── Avatar ──────────────────────────────────────────────────────────────────────
@@ -255,161 +241,6 @@ function PicksLink({ module, label, highlight = false }: { module: string; label
   );
 }
 
-// ── Tiebreaker Match Card (un partido dentro de la sección) ─────────────────────
-
-function TiebreakerMatchCard({
-  sessionId,
-  matchIdx,
-  match,
-  savedPick,
-}: {
-  sessionId: string;
-  matchIdx: number;
-  match: TiebreakerMatch;
-  savedPick: TiebreakerPickRow | null;
-}) {
-  const [htPick, setHtPick] = useState<MatchPick | null>(savedPick?.htPick ?? null);
-  const [ftPick, setFtPick] = useState<MatchPick | null>(savedPick?.ftPick ?? null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(!!savedPick);
-  const [error, setError] = useState<string | null>(null);
-
-  const locked = match.ftResult !== null;
-  const PICKS: { value: MatchPick; label: string }[] = [
-    { value: "HOME", label: match.homeLabel },
-    { value: "DRAW", label: "Empate" },
-    { value: "AWAY", label: match.awayLabel },
-  ];
-  const changed = htPick !== savedPick?.htPick || ftPick !== savedPick?.ftPick;
-
-  async function handleSave() {
-    if (!htPick || !ftPick) return;
-    setSaving(true); setError(null);
-    const res = await saveTiebreakerPick(sessionId, matchIdx, htPick, ftPick);
-    setSaving(false);
-    if (res.error) { setError(res.error); return; }
-    setSaved(true);
-  }
-
-  function PickRow({
-    label, result, pick, onPick,
-  }: { label: string; result: MatchPick | null; pick: MatchPick | null; onPick?: (v: MatchPick) => void }) {
-    return (
-      <div className="space-y-1.5">
-        <p className="text-[11px] text-slate-500 font-medium">{label}</p>
-        <div className="flex gap-1.5">
-          {PICKS.map((p) => {
-            const isResult = result !== null && p.value === result;
-            const isMyPick = p.value === pick;
-            if (result !== null) {
-              return (
-                <div key={p.value} className={`flex-1 text-center py-1.5 rounded-lg text-[11px] font-semibold border ${
-                  isResult
-                    ? "border-green-400/40 bg-green-400/10 text-green-300"
-                    : isMyPick
-                    ? "border-red-400/30 bg-red-400/[0.06] text-slate-500 line-through"
-                    : "border-white/[0.05] text-slate-700"
-                }`}>
-                  {p.label}{isResult && isMyPick ? " ✓" : ""}
-                </div>
-              );
-            }
-            return (
-              <button
-                key={p.value}
-                disabled={locked || saving}
-                onClick={() => onPick?.(p.value)}
-                className={`flex-1 py-2 rounded-lg text-[11px] font-semibold border transition-all active:scale-95 ${
-                  isMyPick
-                    ? "border-amber-400/60 bg-amber-400/15 text-amber-300"
-                    : "border-white/[0.08] bg-white/[0.02] text-slate-500 hover:border-amber-400/30 hover:text-slate-300"
-                }`}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2.5">
-      {match.dateLabel && (
-        <p className="text-[11px] text-slate-500 font-semibold">
-          {match.homeLabel} vs {match.awayLabel}
-          <span className="text-slate-600 font-normal"> · {match.dateLabel}</span>
-        </p>
-      )}
-      <PickRow
-        label="¿Cómo va al medio tiempo?"
-        result={match.htResult}
-        pick={htPick}
-        onPick={(v) => { setHtPick(v); setSaved(false); }}
-      />
-      <PickRow
-        label="¿Cómo termina?"
-        result={match.ftResult}
-        pick={ftPick}
-        onPick={(v) => { setFtPick(v); setSaved(false); }}
-      />
-      {!locked && (
-        <div className="space-y-1">
-          <button
-            onClick={handleSave}
-            disabled={!htPick || !ftPick || saving || (saved && !changed)}
-            className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all active:scale-[0.98] ${
-              saved && !changed
-                ? "bg-green-400/10 border border-green-400/25 text-green-400 cursor-default"
-                : "bg-amber-400/15 border border-amber-400/30 text-amber-300 hover:bg-amber-400/25 disabled:opacity-40"
-            }`}
-          >
-            {saving ? <Loader2 size={13} className="animate-spin mx-auto" /> : saved && !changed ? "✓ Guardado" : "Guardar"}
-          </button>
-          {error && <p className="text-xs text-red-400 text-center">{error}</p>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Tiebreaker Section ──────────────────────────────────────────────────────────
-
-function TiebreakerSection({
-  sessionId,
-  info,
-  savedPicks,
-}: {
-  sessionId: string;
-  info: TiebreakerInfo;
-  savedPicks: TiebreakerPickRow[];
-}) {
-  const pickByIdx = new Map(savedPicks.map((p) => [p.matchIdx, p]));
-
-  return (
-    <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.04] p-3.5 space-y-4">
-      <div className="flex items-center gap-2">
-        <Trophy size={13} className="text-amber-400 shrink-0" />
-        <p className="text-xs font-bold text-amber-300">
-          Desempate · {info.matches.length * 2} picks extra
-        </p>
-      </div>
-      {info.matches.map((m, i) => (
-        <div key={i}>
-          {i > 0 && <div className="border-t border-white/[0.05] pt-3" />}
-          <TiebreakerMatchCard
-            sessionId={sessionId}
-            matchIdx={i}
-            match={m}
-            savedPick={pickByIdx.get(i) ?? null}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ── Main Component ──────────────────────────────────────────────────────────────
 
 export function DuelCard({
@@ -420,8 +251,6 @@ export function DuelCard({
   participants,
   userCredits,
   currentUser,
-  tiebreakerInfo,
-  myTiebreakerPicks,
 }: DuelCardProps) {
   const [phase, setPhase] = useState<"check" | "spin" | "reveal" | "normal">("check");
   const [spinName, setSpinName] = useState(participants[0]?.name ?? "—");
@@ -503,13 +332,6 @@ export function DuelCard({
           {userPair.myScore == null && (
             <PicksLink module={session.module} label="Ver / cambiar mis picks" />
           )}
-          {tiebreakerInfo && (
-            <TiebreakerSection
-              sessionId={session.id}
-              info={tiebreakerInfo}
-              savedPicks={myTiebreakerPicks}
-            />
-          )}
         </div>
       );
     }
@@ -527,13 +349,6 @@ export function DuelCard({
             </div>
           </div>
           <PicksLink module={session.module} label="Hacer mis picks ahora" highlight />
-          {tiebreakerInfo && (
-            <TiebreakerSection
-              sessionId={session.id}
-              info={tiebreakerInfo}
-              savedPicks={myTiebreakerPicks}
-            />
-          )}
         </div>
       );
     }

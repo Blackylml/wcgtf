@@ -192,7 +192,13 @@ export default async function QuinielaDetailPage({
   if (lmxJ) {
     const [matches, ranks, participants, winners] = await Promise.all([
       prisma.match.findMany({
-        where: { stage: "JORNADA", matchNumber: { gte: lmxJ.min, lte: lmxJ.max } },
+        where: {
+          stage: "JORNADA",
+          OR: [
+            { matchNumber: { gte: lmxJ.min, lte: lmxJ.max } },
+            ...(lmxJ.extra?.length ? [{ matchNumber: { in: lmxJ.extra } }] : []),
+          ],
+        },
         orderBy: { matchNumber: "asc" },
         include: {
           homeTeam: { select: { name: true, flag: true, code: true } },
