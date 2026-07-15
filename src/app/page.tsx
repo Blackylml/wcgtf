@@ -9,9 +9,10 @@ import { WinnerPopup } from "@/components/WinnerPopup";
 import { getJornadaReactions } from "@/app/jornada-actions";
 import { Module } from "@/generated/prisma/client";
 import Link from "next/link";
+import { LMX_JORNADAS } from "@/lib/modules";
 import {
   CalendarDays, Star, ArrowRight, BarChart3,
-  Target, Gift, Swords, Wallet, Trophy,
+  Swords, Wallet, Trophy, Medal,
 } from "lucide-react";
 
 const MODULES = [
@@ -59,13 +60,6 @@ const MODULES = [
     badge: "bg-green-400/10 ring-green-400/30 halo-green",
     arrow: "bg-green-400/[0.12] ring-green-400/30 text-green-300",
   },
-];
-
-const STEPS = [
-  { n: 1, icon: Target,    label: "Haz tus predicciones", tint: "text-amber-400",  badge: "bg-amber-400/10 ring-amber-400/30"   },
-  { n: 2, icon: Trophy,    label: "Acumula puntos",        tint: "text-blue-400",   badge: "bg-blue-400/10 ring-blue-400/30"     },
-  { n: 3, icon: BarChart3, label: "Compite en la tabla",   tint: "text-red-400",    badge: "bg-red-400/10 ring-red-400/30"       },
-  { n: 4, icon: Gift,      label: "Gana premios",          tint: "text-purple-400", badge: "bg-purple-400/10 ring-purple-400/30" },
 ];
 
 // J1=1001-1009, J2=1010-1018 … (9 partidos por jornada)
@@ -163,6 +157,47 @@ export default async function HomePage() {
     }
   }
 
+  // ── Ganadores anteriores ─────────────────────────────────────────────
+  const allJornadaMatches = await prisma.match.findMany({
+    where: { stage: "JORNADA", matchNumber: { gte: 1001, lte: 9000 } },
+    select: { matchNumber: true, homeScore: true },
+  });
+  const completedJornadas = LMX_JORNADAS.filter((j) => {
+    const inRange = allJornadaMatches.filter((m) => m.matchNumber >= j.min && m.matchNumber <= j.max);
+    return inRange.length > 0 && inRange.every((m) => m.homeScore !== null);
+  });
+  type WinnerRow = { quiniela: string; winnerName: string; winnerImage: string | null; aciertos: number; prize: number };
+  const pastWinners: WinnerRow[] = (
+    await Promise.all(
+      completedJornadas.map(async (j) => {
+        const top = await prisma.matchBet.groupBy({
+          by: ["userId"],
+          where: { poolModule: j.module as Module, isCorrect: true },
+          _count: { id: true },
+          orderBy: { _count: { id: "desc" } },
+          take: 1,
+        });
+        const topEntry = top[0];
+        if (!topEntry) return null;
+        const winner = await prisma.user.findUnique({
+          where: { id: topEntry.userId },
+          select: { name: true, image: true, email: true },
+        });
+        const prizeAgg = await prisma.payment.aggregate({
+          where: { module: j.module as Module, status: "APPROVED" },
+          _sum: { amount: true },
+        });
+        return {
+          quiniela: j.label,
+          winnerName: winner?.name ?? winner?.email ?? "—",
+          winnerImage: winner?.image ?? null,
+          aciertos: topEntry._count.id,
+          prize: Number(prizeAgg._sum.amount ?? 0),
+        };
+      })
+    )
+  ).filter((r): r is WinnerRow => r !== null);
+
   const homeName = nextMatch?.homeTeam?.name ?? nextMatch?.homeLabel ?? "Por definir";
   const awayName = nextMatch?.awayTeam?.name ?? nextMatch?.awayLabel ?? "Por definir";
 
@@ -256,30 +291,57 @@ export default async function HomePage() {
           ))}
         </div>
 
-        {/* ── ¿Cómo funciona? ────────────────────────────────────── */}
+        {/* ── Ganadores anteriores ───────────────────────────────── */}
         <section
           className="animate-rise rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5"
           style={{ animationDelay: "440ms" }}
         >
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.18em] mb-5">¿Cómo funciona?</p>
-          <div className="flex items-start">
-            {STEPS.map(({ n, icon: Icon, label, tint, badge }, i) => (
-              <div key={n} className="contents">
-                {i > 0 && (
-                  <div className="flex-1 mt-[18px] border-t border-dashed border-white/12" />
-                )}
-                <div className="flex flex-col items-center text-center w-[68px] shrink-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`grid place-items-center w-9 h-9 rounded-full ring-1 ${badge}`}>
-                      <Icon size={16} className={tint} strokeWidth={2} />
-                    </span>
-                    <span className={`font-display font-extrabold text-2xl ${tint}`}>{n}</span>
-                  </div>
-                  <span className="mt-2.5 text-[11px] text-slate-400 leading-tight">{label}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-[0.18em] mb-4">
+            <Trophy size={13} className="text-amber-400" /> Ganadores anteriores
+          </p>
+          {pastWinners.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-6 text-slate-600">
+              <Medal size={28} className="opacity-30" />
+              <p className="text-xs">Aún no hay ganadores — ¡juega la primera jornada!</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-slate-600 text-[10px] uppercase tracking-wider">
+                    <th className="text-left pb-2 pl-1 font-semibold">Quiniela</th>
+                    <th className="text-left pb-2 font-semibold">Ganador</th>
+                    <th className="text-right pb-2 font-semibold tabular-nums">Aciertos</th>
+                    <th className="text-right pb-2 pr-1 font-semibold tabular-nums">Premio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pastWinners.map((w, i) => (
+                    <tr key={i} className="border-t border-white/[0.05]">
+                      <td className="py-2 pl-1 text-slate-300 font-medium">{w.quiniela}</td>
+                      <td className="py-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {w.winnerImage ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={w.winnerImage} alt="" className="w-5 h-5 rounded-full object-cover shrink-0 ring-1 ring-white/15" />
+                          ) : (
+                            <span className="w-5 h-5 rounded-full bg-amber-400/20 ring-1 ring-amber-400/30 flex items-center justify-center shrink-0">
+                              <Trophy size={10} className="text-amber-400" />
+                            </span>
+                          )}
+                          <span className="text-white font-semibold truncate">{w.winnerName}</span>
+                        </div>
+                      </td>
+                      <td className="py-2 text-right text-amber-300 font-bold tabular-nums">{w.aciertos}</td>
+                      <td className="py-2 pr-1 text-right text-emerald-300 font-semibold tabular-nums">
+                        {w.prize > 0 ? `$${w.prize.toFixed(0)}` : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </div>
 
