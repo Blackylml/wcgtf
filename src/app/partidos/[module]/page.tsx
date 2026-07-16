@@ -163,7 +163,7 @@ export default async function QuinielaDetailPage({
               locked={isLocked(lockDate)}
               lockLabel={fmtLock(lockMs)}
               standing={null}
-              access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
+              access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered, duelEntered: access.duelEntered }}
               userCredits={userCredits}
               matches={matches.map((m) => ({
                 id: m.id,
@@ -234,7 +234,7 @@ export default async function QuinielaDetailPage({
               locked={isLocked(lockDate)}
               lockLabel={fmtLock(lockMs)}
               standing={ranks[mod] ?? null}
-              access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
+              access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered, duelEntered: access.duelEntered }}
               userCredits={userCredits}
               matches={matches.map((m) => ({
                 id: m.id,
@@ -298,7 +298,7 @@ export default async function QuinielaDetailPage({
               locked={isLocked(lockDate)}
               lockLabel={fmtLock(lockMs)}
               standing={null}
-              access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
+              access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered, duelEntered: access.duelEntered }}
               userCredits={userCredits}
               matches={matches.map((m) => ({
                 id: m.id,

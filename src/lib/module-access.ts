@@ -242,6 +242,8 @@ export type ModuleAccess = {
   entered: boolean;
   /** true si el pago está aprobado o el módulo es gratis (sus apuestas suman). */
   approved: boolean;
+  /** true si el usuario está inscrito en el duelo de este módulo (acceso a picks sin pago de quiniela). */
+  duelEntered: boolean;
 };
 
 /** Estado de acceso de un usuario a un módulo (para gates y para habilitar apuestas). */
@@ -253,7 +255,6 @@ export async function getModuleAccess(userId: string, module: Module): Promise<M
       orderBy: { createdAt: "desc" },
       select: { status: true },
     }),
-    // Entrada al duelo de este módulo equivale a acceso aprobado para hacer picks
     prisma.duelEntry.findFirst({
       where: { userId, session: { module } },
       select: { id: true },
@@ -262,20 +263,16 @@ export async function getModuleAccess(userId: string, module: Module): Promise<M
 
   const price = Number(settings?.price ?? 0);
   const entryOpen = settings?.entryOpen ?? true;
+  const duelEntered = !!duelEntry;
 
   if (price <= 0) {
-    return { price: 0, entryOpen, paymentStatus: "APPROVED", entered: true, approved: true };
-  }
-
-  // Si el usuario está inscrito en el duelo de este módulo, se considera pagado
-  if (duelEntry) {
-    return { price, entryOpen, paymentStatus: "APPROVED", entered: true, approved: true };
+    return { price: 0, entryOpen, paymentStatus: "APPROVED", entered: true, approved: true, duelEntered };
   }
 
   const paymentStatus = pay?.status ?? null;
   const entered = paymentStatus === "PENDING" || paymentStatus === "APPROVED";
   const approved = paymentStatus === "APPROVED";
-  return { price, entryOpen, paymentStatus, entered, approved };
+  return { price, entryOpen, paymentStatus, entered, approved, duelEntered };
 }
 
 /** Conjunto de módulos cuyas apuestas suman para un usuario (pago aprobado o módulo gratis). */

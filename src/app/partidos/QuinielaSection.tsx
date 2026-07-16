@@ -7,7 +7,7 @@ import { saveQuinielaBets, saveKoTiebreaker } from "./actions";
 import { FlagCircle } from "@/components/FlagCircle";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import type { ModuleAccent } from "@/lib/modules";
-import { Lock, Clock, Trophy, ShieldAlert } from "lucide-react";
+import { Lock, Clock, Trophy, ShieldAlert, Swords } from "lucide-react";
 import type { QuinielaStanding } from "@/lib/module-access";
 
 export type QMatch = {
@@ -20,7 +20,7 @@ export type QMatch = {
   halfLabel?: "1T" | "FT"; // picks de desempate: primer tiempo / resultado final
 };
 
-type Access = { price: number; paymentStatus: string | null; entryOpen: boolean; entered: boolean };
+type Access = { price: number; paymentStatus: string | null; entryOpen: boolean; entered: boolean; duelEntered?: boolean };
 
 function ProgressRing({ done, total }: { done: number; total: number }) {
   const r = 17;
@@ -94,7 +94,7 @@ export function QuinielaSection({
   const changed = matches.some((m) => picks[m.id] && picks[m.id] !== saved[m.id]);
   const missing = matches.filter((m) => !picks[m.id]).length;
 
-  const interactable = access.entered && !locked;
+  const interactable = (access.entered || !!access.duelEntered) && !locked;
 
   function choose(id: string, pick: MatchPick) {
     if (!interactable) return;
@@ -145,16 +145,28 @@ export function QuinielaSection({
         )}
       </div>
 
-      {/* Entry gate (pago de la quiniela) */}
-      <ModuleEntryGate
-        module={module}
-        label={label}
-        accent={accent}
-        price={access.price}
-        paymentStatus={access.paymentStatus}
-        entryOpen={access.entryOpen && !locked}
-        userCredits={userCredits}
-      />
+      {/* Entry gate: duelo → banner informativo; quiniela → gate de pago */}
+      {access.duelEntered && !access.entered ? (
+        <div className="animate-rise flex items-center gap-2.5 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-3.5 mb-4">
+          <span className="grid place-items-center w-8 h-8 rounded-xl bg-amber-500/10 ring-1 ring-amber-500/30 shrink-0">
+            <Swords size={15} className="text-amber-400" strokeWidth={2} />
+          </span>
+          <div>
+            <p className="font-display font-bold text-sm text-amber-200 leading-tight">Modo duelo 1v1</p>
+            <p className="text-xs text-slate-400 mt-0.5">Tus picks se usan para el duelo. La quiniela pool es opcional.</p>
+          </div>
+        </div>
+      ) : (
+        <ModuleEntryGate
+          module={module}
+          label={label}
+          accent={accent}
+          price={access.price}
+          paymentStatus={access.paymentStatus}
+          entryOpen={access.entryOpen && !locked}
+          userCredits={userCredits}
+        />
+      )}
 
       {/* Match rows */}
       <div className={`rounded-xl border border-white/[0.06] overflow-hidden ${!interactable ? "opacity-50 pointer-events-none select-none" : ""}`}>

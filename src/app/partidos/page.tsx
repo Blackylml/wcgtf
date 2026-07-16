@@ -135,23 +135,33 @@ export default async function PartidosLobby() {
 
   // Construir tarjetas de jornadas
   const jornadaCards: CardData[] = LMX_JORNADAS.map((q) => {
-    const qm = allMatches.filter((m) => m.matchNumber >= q.min && m.matchNumber <= q.max);
+    // Partidos que pertenecen a esta jornada (respetando exclude y extra)
+    const qm = allMatches.filter((m) => {
+      const inRange = m.matchNumber >= q.min && m.matchNumber <= q.max && !(q.exclude?.includes(m.matchNumber));
+      const isExtra = q.extra?.includes(m.matchNumber) ?? false;
+      return inRange || isExtra;
+    });
     if (qm.length === 0) {
       return {
         href: `/partidos/${q.module}`, label: q.label, accent: "amber",
         picks: 0, total: 0,
-        access: { price: 0, entryOpen: false, paymentStatus: null, entered: false, approved: false },
+        access: { price: 0, entryOpen: false, paymentStatus: null, entered: false, approved: false, duelEntered: false },
         locked: false, lockLabel: "", rank: null, comingSoon: true,
       };
     }
     const lockMs = Math.min(...qm.map((m) => m.scheduledAt.getTime()));
+    const acc = accessByModule[q.module];
+    // Solo mostrar picks si el usuario pagó la quiniela (no por duelo)
+    const picks = acc?.entered
+      ? qm.filter((m) => m.bets.some((b) => b.poolModule === q.module)).length
+      : 0;
     return {
       href: `/partidos/${q.module}`,
       label: q.label,
       accent: "amber",
-      picks: qm.filter((m) => m.bets.some((b) => b.poolModule === q.module)).length,
+      picks,
       total: qm.length,
-      access: accessByModule[q.module],
+      access: acc,
       locked: isLocked(new Date(lockMs)),
       lockLabel: fmtLock(lockMs),
       rank: ranks[q.module] ?? null,
@@ -164,7 +174,7 @@ export default async function PartidosLobby() {
     label: q.label,
     accent: "amber",
     picks: 0, total: 0,
-    access: { price: 0, entryOpen: false, paymentStatus: null, entered: false, approved: false },
+    access: { price: 0, entryOpen: false, paymentStatus: null, entered: false, approved: false, duelEntered: false },
     locked: false, lockLabel: "", rank: null,
     comingSoon: !q.available,
   }));
