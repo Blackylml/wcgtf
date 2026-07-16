@@ -17,7 +17,7 @@ export type QMatch = {
   awayName: string; awayFlag: string | null; awayCode: string | null;
   userBet: MatchPick | null;
   allowDraw?: boolean; // false en KO sin penales
-  halfLabel?: "1T" | "2T"; // picks de desempate: primer/segundo tiempo
+  halfLabel?: "1T" | "FT"; // picks de desempate: primer tiempo / resultado final
 };
 
 type Access = { price: number; paymentStatus: string | null; entryOpen: boolean; entered: boolean };
@@ -164,7 +164,7 @@ export function QuinielaSection({
                 <span className={`text-[9px] font-bold shrink-0 px-1.5 py-0.5 rounded-full w-[26px] text-center leading-tight ${
                   m.halfLabel === "1T"
                     ? "bg-amber-500/20 text-amber-300 border border-amber-500/35"
-                    : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/35"
+                    : "bg-blue-500/20 text-blue-300 border border-blue-500/35"
                 }`}>
                   {m.halfLabel}
                 </span>

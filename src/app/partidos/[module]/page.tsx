@@ -242,7 +242,7 @@ export default async function QuinielaDetailPage({
                 userBet: m.bets[0]?.pick ?? null,
                 allowDraw: true,
                 halfLabel: lmxJ.extra?.includes(m.matchNumber)
-                  ? (m.matchNumber % 2 === 1 ? "1T" : "2T")
+                  ? (m.matchNumber % 2 === 1 ? "1T" : "FT")
                   : undefined,
               }))}
             />

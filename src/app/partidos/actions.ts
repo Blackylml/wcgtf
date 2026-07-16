@@ -61,7 +61,8 @@ export async function saveQuinielaBets(module: Module, picks: { matchId: string;
       ? (koStages as string[]).includes(m.stage)
       : m.stage !== "GROUP";
     if (!inPool) continue;
-    if (pick === "DRAW" && m.stage !== "GROUP" && !m.penaltiesAllowed) continue;
+    const drawAllowed = m.stage === "GROUP" || m.stage === "JORNADA" || m.penaltiesAllowed;
+    if (pick === "DRAW" && !drawAllowed) continue;
     await prisma.matchBet.upsert({
       where: { userId_matchId_poolModule: { userId, matchId, poolModule: module } },
       create: { userId, matchId, pick, poolModule: module },
