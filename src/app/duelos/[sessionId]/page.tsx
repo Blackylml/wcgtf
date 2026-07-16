@@ -6,7 +6,6 @@ import { BottomNav } from "@/components/BottomNav";
 import { LMX_JORNADAS } from "@/lib/modules";
 import { moduleLockAt, isLocked } from "@/lib/module-access";
 import { DuelPicksForm } from "./DuelPicksForm";
-import { TiebreakerForm } from "./TiebreakerForm";
 import { ArrowLeft, Swords, Clock } from "lucide-react";
 import Link from "next/link";
 import { MatchPick } from "@/generated/prisma/client";
@@ -106,12 +105,6 @@ export default async function DuelSessionPage({
   const lockAt = await moduleLockAt(duelSession.module);
   const locked = isLocked(lockAt);
   const lockLabel = lockAt ? fmtLock(lockAt) : "";
-
-  const myTbPicks = duelSession.hasTiebreaker
-    ? await prisma.duelTiebreakerPick.findMany({ where: { sessionId, userId } })
-    : [];
-  const tbPick0 = myTbPicks.find((p) => p.matchIdx === 0) ?? null;
-  const tbPick1 = myTbPicks.find((p) => p.matchIdx === 1) ?? null;
 
   return (
     <div className="app-shell min-h-screen text-white">
@@ -250,29 +243,6 @@ export default async function DuelSessionPage({
           lockLabel={lockLabel}
         />
 
-        {/* Tiebreaker */}
-        {duelSession.hasTiebreaker && (
-          <TiebreakerForm
-            sessionId={sessionId}
-            match1={{
-              homeLabel: duelSession.tbHomeLabel,
-              awayLabel: duelSession.tbAwayLabel,
-              dateLabel: duelSession.tbDateLabel,
-            }}
-            match2={
-              duelSession.tb2HomeLabel
-                ? {
-                    homeLabel: duelSession.tb2HomeLabel,
-                    awayLabel: duelSession.tb2AwayLabel,
-                    dateLabel: duelSession.tb2DateLabel,
-                  }
-                : null
-            }
-            savedPick0={tbPick0 ? { htPick: tbPick0.htPick, ftPick: tbPick0.ftPick } : null}
-            savedPick1={tbPick1 ? { htPick: tbPick1.htPick, ftPick: tbPick1.ftPick } : null}
-            locked={locked}
-          />
-        )}
 
       </div>
       <BottomNav />
