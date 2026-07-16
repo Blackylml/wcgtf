@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Module } from "@/generated/prisma/client";
 import type { ModuleAccent } from "@/lib/modules";
-import { createModuleEntry, getModuleEntryMPUrl, deleteModuleEntry } from "@/app/entryActions";
-import { CreditCard, Banknote, Trash2, Check, Clock, Ticket, Lock } from "lucide-react";
+import { createModuleEntry, getModuleEntryMPUrl, deleteModuleEntry, payModuleWithCredits } from "@/app/entryActions";
+import { CreditCard, Banknote, Trash2, Check, Clock, Ticket, Lock, Coins } from "lucide-react";
 
 type Phase = "gate" | "pay" | "pending" | "paid";
 
@@ -23,7 +23,7 @@ function initPhase(paymentStatus: string | null, price: number): Phase {
 }
 
 export function ModuleEntryGate({
-  module, label, accent, price, paymentStatus, entryOpen,
+  module, label, accent, price, paymentStatus, entryOpen, userCredits,
 }: {
   module: Module;
   label: string;
@@ -31,6 +31,7 @@ export function ModuleEntryGate({
   price: number;
   paymentStatus: string | null;
   entryOpen: boolean;
+  userCredits?: number;
 }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>(() => initPhase(paymentStatus, price));
@@ -63,6 +64,15 @@ export function ModuleEntryGate({
     setLoading(false);
     if (!ok) return;
     setPhase("pending");
+    router.refresh();
+  }
+
+  async function payCredits() {
+    setLoading(true); setError("");
+    const r = await payModuleWithCredits(module);
+    setLoading(false);
+    if (r?.error) { setError(r.error); return; }
+    setPhase("paid");
     router.refresh();
   }
 
@@ -113,6 +123,19 @@ export function ModuleEntryGate({
         </p>
         {entryOpen ? (
           <div className="grid grid-cols-1 gap-2">
+            {userCredits !== undefined && (
+              <button
+                onClick={payCredits}
+                disabled={loading || userCredits < price}
+                className={neutralBtn}
+                title={userCredits < price ? `Solo tienes $${userCredits} créditos` : undefined}
+              >
+                <Coins size={15} />
+                {userCredits >= price
+                  ? `Pagar con créditos · $${price}`
+                  : `Créditos insuficientes ($${userCredits}/$${price})`}
+              </button>
+            )}
             <button onClick={payCard} disabled={loading} className={mpBtn}><CreditCard size={15} /> Pagar con tarjeta · ${price}</button>
             <button onClick={payManual} disabled={loading} className={neutralBtn}><Banknote size={15} /> Pago manual · ${price}</button>
           </div>

@@ -50,7 +50,11 @@ export default async function QuinielaDetailPage({
   const session = await auth();
   const userId = session!.user.id;
 
-  const access = await getModuleAccess(userId, mod);
+  const [access, userRow] = await Promise.all([
+    getModuleAccess(userId, mod),
+    prisma.user.findUnique({ where: { id: userId }, select: { credits: true } }),
+  ]);
+  const userCredits = Number(userRow?.credits ?? 0);
 
   // ── Eliminatorias ──────────────────────────────────────────────
   if (mod === "MATCHES") {
@@ -78,7 +82,7 @@ export default async function QuinielaDetailPage({
         <div className="relative z-10 max-w-2xl mx-auto px-4 pt-5 pb-28">
           <BackBar />
           <h1 className="font-display text-2xl font-extrabold mb-4">Eliminatorias</h1>
-          <ModuleEntryGate module="MATCHES" label={MODULE_META.MATCHES.label} accent={MODULE_META.MATCHES.accent} price={access.price} paymentStatus={access.paymentStatus} entryOpen={access.entryOpen} />
+          <ModuleEntryGate module="MATCHES" label={MODULE_META.MATCHES.label} accent={MODULE_META.MATCHES.accent} price={access.price} paymentStatus={access.paymentStatus} entryOpen={access.entryOpen} userCredits={userCredits} />
 
           <div className="flex gap-2 pb-3 overflow-x-auto no-scrollbar">
             {stages.map((s) => (
@@ -160,6 +164,7 @@ export default async function QuinielaDetailPage({
               lockLabel={fmtLock(lockMs)}
               standing={null}
               access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
+              userCredits={userCredits}
               matches={matches.map((m) => ({
                 id: m.id,
                 matchNumber: m.matchNumber,
@@ -230,6 +235,7 @@ export default async function QuinielaDetailPage({
               lockLabel={fmtLock(lockMs)}
               standing={ranks[mod] ?? null}
               access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
+              userCredits={userCredits}
               matches={matches.map((m) => ({
                 id: m.id,
                 matchNumber: m.matchNumber,
@@ -293,6 +299,7 @@ export default async function QuinielaDetailPage({
               lockLabel={fmtLock(lockMs)}
               standing={null}
               access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
+              userCredits={userCredits}
               matches={matches.map((m) => ({
                 id: m.id,
                 matchNumber: m.matchNumber,
@@ -351,6 +358,7 @@ export default async function QuinielaDetailPage({
             lockLabel={fmtLock(lockMs)}
             standing={ranks[mod] ?? null}
             access={{ price: access.price, paymentStatus: access.paymentStatus, entryOpen: access.entryOpen, entered: access.entered }}
+            userCredits={userCredits}
             matches={matches.map((m) => ({
               id: m.id,
               matchNumber: m.matchNumber,

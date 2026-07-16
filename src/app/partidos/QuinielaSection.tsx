@@ -49,7 +49,7 @@ type TiebreakerPrediction = { topScorerTeam: string | null; firstHalfGoals: numb
 type TeamOption = { code: string; name: string; flag: string | null };
 
 export function QuinielaSection({
-  module, label, accent, matches, access, locked, lockLabel, standing, teams, savedTiebreaker,
+  module, label, accent, matches, access, locked, lockLabel, standing, teams, savedTiebreaker, userCredits,
 }: {
   module: Module;
   label: string;
@@ -61,6 +61,7 @@ export function QuinielaSection({
   standing: QuinielaStanding | null;
   teams?: TeamOption[];
   savedTiebreaker?: TiebreakerPrediction | null;
+  userCredits?: number;
 }) {
   const router = useRouter();
   const [tb, setTb] = useState<TiebreakerPrediction>({
@@ -152,6 +153,7 @@ export function QuinielaSection({
         price={access.price}
         paymentStatus={access.paymentStatus}
         entryOpen={access.entryOpen && !locked}
+        userCredits={userCredits}
       />
 
       {/* Match rows */}

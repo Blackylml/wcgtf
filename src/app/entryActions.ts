@@ -62,6 +62,44 @@ export async function getModuleEntryMPUrl(module: Module) {
   return { redirectUrl: pref.init_point };
 }
 
+/** Paga la entrada al módulo descontando créditos del usuario (crea Payment APPROVED al instante). */
+export async function payModuleWithCredits(module: Module) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autenticado" };
+  const userId = session.user.id;
+
+  const settings = await prisma.moduleSettings.findUnique({ where: { module } });
+  const price = Number(settings?.price ?? 0);
+  if (price <= 0) return { error: "Este módulo es gratis" };
+  if (settings && !settings.entryOpen) return { error: "La entrada a este módulo está cerrada" };
+  if (isLocked(await moduleLockAt(module))) return { error: "La quiniela ya cerró (empezó el primer partido)" };
+
+  const existing = await prisma.payment.findFirst({
+    where: { userId, module, status: { in: ["PENDING", "APPROVED"] } },
+  });
+  if (existing) return { error: "Ya tienes una entrada a este módulo" };
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { credits: true } });
+  if (!user) return { error: "Usuario no encontrado" };
+  if (Number(user.credits) < price) return { error: `Créditos insuficientes — necesitas $${price}` };
+
+  await prisma.$transaction([
+    prisma.payment.create({ data: { userId, module, amount: price, status: "APPROVED" } }),
+    prisma.user.update({ where: { id: userId }, data: { credits: { decrement: price } } }),
+    prisma.creditTransaction.create({
+      data: {
+        userId,
+        amount: -price,
+        type: "SPEND_ENTRY",
+        description: `Entrada quiniela: ${MODULE_META[module].label}`,
+      },
+    }),
+  ]);
+
+  revalidatePath(MODULE_META[module].path);
+  return { success: true };
+}
+
 /** Cancela la entrada al módulo si el pago no fue aprobado (las apuestas se conservan). */
 export async function deleteModuleEntry(module: Module) {
   const session = await auth();
