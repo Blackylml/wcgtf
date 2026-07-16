@@ -246,12 +246,17 @@ export type ModuleAccess = {
 
 /** Estado de acceso de un usuario a un módulo (para gates y para habilitar apuestas). */
 export async function getModuleAccess(userId: string, module: Module): Promise<ModuleAccess> {
-  const [settings, pay] = await Promise.all([
+  const [settings, pay, duelEntry] = await Promise.all([
     prisma.moduleSettings.findUnique({ where: { module } }),
     prisma.payment.findFirst({
       where: { userId, module },
       orderBy: { createdAt: "desc" },
       select: { status: true },
+    }),
+    // Entrada al duelo de este módulo equivale a acceso aprobado para hacer picks
+    prisma.duelEntry.findFirst({
+      where: { userId, session: { module } },
+      select: { id: true },
     }),
   ]);
 
@@ -260,6 +265,11 @@ export async function getModuleAccess(userId: string, module: Module): Promise<M
 
   if (price <= 0) {
     return { price: 0, entryOpen, paymentStatus: "APPROVED", entered: true, approved: true };
+  }
+
+  // Si el usuario está inscrito en el duelo de este módulo, se considera pagado
+  if (duelEntry) {
+    return { price, entryOpen, paymentStatus: "APPROVED", entered: true, approved: true };
   }
 
   const paymentStatus = pay?.status ?? null;
