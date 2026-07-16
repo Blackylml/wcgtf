@@ -41,7 +41,7 @@ export async function saveQuinielaBets(module: Module, picks: { matchId: string;
   const userId = session.user.id;
 
   const access = await getModuleAccess(userId, module);
-  if (!access.entered && !access.duelEntered) return { error: "Primero paga la entrada de esta quiniela" };
+  if (!access.entered) return { error: "Primero paga la entrada de esta quiniela" };
   if (isLocked(await moduleLockAt(module))) return { error: "La quiniela ya cerró (empezó el primer partido)" };
 
   const range = quinielaRange(module);

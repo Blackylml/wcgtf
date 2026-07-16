@@ -119,11 +119,11 @@ export async function settleDuelPrizes(sessionId: string) {
     tbMap.get(p.userId)!.set(p.matchIdx, p);
   }
 
-  // Puntos de cada usuario en el módulo (MatchBets correctas)
+  // Puntos de cada usuario en el duelo (MatchBets correctas del duelSession)
   const allUserIds = [...new Set(pairs.flatMap((p) => [p.user1Id, p.user2Id]))];
   const bets = await prisma.matchBet.findMany({
     where: {
-      poolModule: session.module,
+      duelSessionId: sessionId,
       userId: { in: allUserIds },
       isCorrect: true,
     },

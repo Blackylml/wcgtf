@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { MatchPick, Module } from "@/generated/prisma/client";
 import { saveQuinielaBets, saveKoTiebreaker } from "./actions";
 import { FlagCircle } from "@/components/FlagCircle";
@@ -94,7 +95,7 @@ export function QuinielaSection({
   const changed = matches.some((m) => picks[m.id] && picks[m.id] !== saved[m.id]);
   const missing = matches.filter((m) => !picks[m.id]).length;
 
-  const interactable = (access.entered || !!access.duelEntered) && !locked;
+  const interactable = access.entered && !locked;
 
   function choose(id: string, pick: MatchPick) {
     if (!interactable) return;
@@ -145,16 +146,19 @@ export function QuinielaSection({
         )}
       </div>
 
-      {/* Entry gate: duelo → banner informativo; quiniela → gate de pago */}
+      {/* Entry gate: duelo → banner con link a Duelos; quiniela → gate de pago */}
       {access.duelEntered && !access.entered ? (
         <div className="animate-rise flex items-center gap-2.5 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-3.5 mb-4">
           <span className="grid place-items-center w-8 h-8 rounded-xl bg-amber-500/10 ring-1 ring-amber-500/30 shrink-0">
             <Swords size={15} className="text-amber-400" strokeWidth={2} />
           </span>
-          <div>
-            <p className="font-display font-bold text-sm text-amber-200 leading-tight">Modo duelo 1v1</p>
-            <p className="text-xs text-slate-400 mt-0.5">Tus picks se usan para el duelo. La quiniela pool es opcional.</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-display font-bold text-sm text-amber-200 leading-tight">Estás inscrito en un duelo</p>
+            <p className="text-xs text-slate-400 mt-0.5">Haz tus picks en la sección de Duelos.</p>
           </div>
+          <Link href="/duelos" className="shrink-0 text-xs font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded-lg px-2.5 py-1.5 hover:bg-amber-500/25 transition-colors">
+            Ir a Duelos →
+          </Link>
         </div>
       ) : (
         <ModuleEntryGate

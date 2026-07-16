@@ -180,20 +180,23 @@ enum Stage {
 }
 
 model MatchBet {
-  id         String    @id @default(cuid())
-  userId     String
-  matchId    String
-  pick       MatchPick
-  poolModule Module?   // bolsa/quiniela a la que pertenece (permite picks independientes por bolsa)
-  isCorrect  Boolean?
-  createdAt  DateTime  @default(now())
+  id            String    @id @default(cuid())
+  userId        String
+  matchId       String
+  pick          MatchPick
+  poolModule    Module?   // bolsa/quiniela a la que pertenece (permite picks independientes por bolsa)
+  duelSessionId String?   // si != null, este pick es del duelo (no de la quiniela)
+  isCorrect     Boolean?
+  createdAt     DateTime  @default(now())
 
-  user      User     @relation(fields: [userId], references: [id])
-  match     Match    @relation(fields: [matchId], references: [id])
-  payment   Payment? @relation(fields: [paymentId], references: [id])
-  paymentId String?
+  user        User         @relation(fields: [userId], references: [id])
+  match       Match        @relation(fields: [matchId], references: [id])
+  payment     Payment?     @relation(fields: [paymentId], references: [id])
+  paymentId   String?
+  duelSession DuelSession? @relation(fields: [duelSessionId], references: [id])
 
   @@unique([userId, matchId, poolModule])
+  @@unique([userId, matchId, duelSessionId])
 }
 
 enum MatchPick {
@@ -430,6 +433,7 @@ model DuelSession {
   entries         DuelEntry[]
   pairs           DuelPair[]
   tiebreakerPicks DuelTiebreakerPick[]
+  matchBets       MatchBet[]
 }
 
 model DuelTiebreakerPick {

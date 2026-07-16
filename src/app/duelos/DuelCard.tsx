@@ -223,10 +223,10 @@ function HeadToHead({
 
 // ── Picks Link ──────────────────────────────────────────────────────────────────
 
-function PicksLink({ module, label, highlight = false }: { module: string; label: string; highlight?: boolean }) {
+function PicksLink({ href, label, highlight = false }: { href: string; label: string; highlight?: boolean }) {
   return (
     <Link
-      href={`/partidos/${module}`}
+      href={href}
       className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${
         highlight
           ? "bg-amber-400/[0.08] border-amber-400/25 hover:bg-amber-400/[0.14]"
@@ -330,7 +330,7 @@ export function DuelCard({
         <div className="space-y-3">
           <HeadToHead pair={userPair} rival={rival} currentUser={currentUser} prize={prize} />
           {userPair.myScore == null && (
-            <PicksLink module={session.module} label="Ver / cambiar mis picks" />
+            <PicksLink href={`/duelos/${session.id}`} label="Ver / cambiar mis picks" />
           )}
         </div>
       );
@@ -348,7 +348,7 @@ export function DuelCard({
               </p>
             </div>
           </div>
-          <PicksLink module={session.module} label="Hacer mis picks ahora" highlight />
+          <PicksLink href={`/duelos/${session.id}`} label="Hacer mis picks ahora" highlight />
         </div>
       );
     }

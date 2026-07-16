@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, CalendarDays, Star, User, ListChecks, Wallet } from "lucide-react";
+import { Home, CalendarDays, Swords, User, ListChecks, Wallet } from "lucide-react";
 
 const NAV = [
   { href: "/",           icon: Home,         label: "Inicio"     },
   { href: "/partidos",   icon: CalendarDays, label: "Quinielas"  },
   { href: "/resultados", icon: ListChecks,   label: "Resultados" },
   { href: "/creditos",   icon: Wallet,       label: "Créditos"   },
-  { href: "/especiales", icon: Star,         label: "Especiales" },
+  { href: "/duelos",     icon: Swords,       label: "Duelos"     },
   { href: "/dashboard",  icon: User,         label: "Yo"         },
 ];
 
