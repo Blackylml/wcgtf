@@ -390,8 +390,6 @@ export function DuelCard({
               )}
             </button>
             {enterError && <p className="text-xs text-red-400 text-center">{enterError}</p>}
-            {/* Picks son independientes del duelo — siempre disponibles */}
-            <PicksLink module={session.module} label="Hacer picks sin costo" />
           </>
         ) : (
           <p className="text-xs text-center text-slate-600 py-1">Inscripción cerrada</p>
