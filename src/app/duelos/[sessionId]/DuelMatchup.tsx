@@ -17,6 +17,31 @@ export type MatchupRow = {
 
 const PICK_LABEL: Record<MatchPick, string> = { HOME: "LOC", DRAW: "EMP", AWAY: "VIS" };
 
+function Avatar({ name, image, size = 32 }: { name: string; image: string | null; size?: number }) {
+  const initials = name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  const style = { width: size, height: size, fontSize: size * 0.36 };
+  if (image) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={image}
+        alt={name}
+        style={style}
+        className="rounded-full object-cover ring-1 ring-white/20 shrink-0"
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
+  return (
+    <span
+      style={style}
+      className="rounded-full bg-white/[0.08] ring-1 ring-white/15 grid place-items-center font-bold text-slate-300 shrink-0"
+    >
+      {initials || "?"}
+    </span>
+  );
+}
+
 function TeamLogo({ flag, name }: { flag: string | null; name: string }) {
   if (flag?.startsWith("http")) {
     // eslint-disable-next-line @next/next/no-img-element
@@ -52,11 +77,15 @@ function PickBadge({ bet, reveal }: { bet: PickState; reveal: boolean }) {
 export function DuelMatchup({
   rows,
   myName,
+  myImage,
   rivalName,
+  rivalImage,
 }: {
   rows: MatchupRow[];
   myName: string;
+  myImage: string | null;
   rivalName: string;
+  rivalImage: string | null;
 }) {
   if (rows.length === 0) return null;
 
@@ -64,24 +93,36 @@ export function DuelMatchup({
   const rivPts = rows.filter((r) => r.rivalBet?.isCorrect === true).length;
   const done   = rows.filter((r) => r.myBet?.isCorrect    != null).length;
 
+  const myFirst = myName.split(" ")[0];
+  const rivFirst = rivalName.split(" ")[0];
+
   return (
     <div className="animate-rise mb-6 rounded-2xl border border-white/[0.08] bg-white/[0.025] overflow-hidden">
       {/* Header */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Tú</span>
-          <span className="text-lg font-display font-extrabold tabular-nums text-white leading-none">{myPts}</span>
+        {/* Me */}
+        <div className="flex items-center gap-2.5">
+          <Avatar name={myName} image={myImage} size={36} />
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider truncate">{myFirst}</span>
+            <span className="text-xl font-display font-extrabold tabular-nums text-white leading-none">{myPts}</span>
+          </div>
         </div>
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[9px] text-slate-600 font-semibold uppercase tracking-widest">
+
+        {/* Center */}
+        <div className="flex flex-col items-center gap-0.5 shrink-0">
+          <span className="text-[9px] text-slate-600 font-semibold uppercase tracking-widest whitespace-nowrap">
             {done > 0 ? `${done}/${rows.length} jugados` : "Partido a partido"}
           </span>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-[90px]">
-            {rivalName.split(" ")[0]}
-          </span>
-          <span className="text-lg font-display font-extrabold tabular-nums text-white leading-none">{rivPts}</span>
+
+        {/* Rival */}
+        <div className="flex items-center justify-end gap-2.5">
+          <div className="flex flex-col items-end min-w-0">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">{rivFirst}</span>
+            <span className="text-xl font-display font-extrabold tabular-nums text-white leading-none">{rivPts}</span>
+          </div>
+          <Avatar name={rivalName} image={rivalImage} size={36} />
         </div>
       </div>
 

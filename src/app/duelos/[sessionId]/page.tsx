@@ -239,7 +239,9 @@ export default async function DuelSessionPage({
         {rival && (
           <DuelMatchup
             myName={authSession.user.name ?? "Tú"}
+            myImage={authSession.user.image ?? null}
             rivalName={rival.name ?? rival.email ?? "Rival"}
+            rivalImage={rival.image ?? null}
             rows={matches.map((m): MatchupRow => ({
               id: m.id,
               matchNumber: m.matchNumber,
