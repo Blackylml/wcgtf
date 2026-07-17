@@ -26,9 +26,10 @@ function revalidateAll() {
 }
 
 // Ventana para auto-checar un partido: desde ~10 min después de su fin estimado
-// (kickoff + ~110 min) hasta 8 h después (más allá = postergado/cancelado → manual).
+// (kickoff + ~110 min) hasta 25 h después. 25h permite que un cron diario alcance
+// partidos de la noche anterior (Liga MX termina ~1-4 AM UTC, cron corre a las 2/4 AM UTC).
 const DUE_MIN_MS = 110 * 60 * 1000;
-const DUE_MAX_MS = 8 * 60 * 60 * 1000;
+const DUE_MAX_MS = 25 * 60 * 60 * 1000;
 
 /**
  * Trae los partidos finalizados de la API y actualiza los mapeados (externalId).
