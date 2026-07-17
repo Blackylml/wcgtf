@@ -6,6 +6,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { LMX_JORNADAS } from "@/lib/modules";
 import { moduleLockAt, isLocked } from "@/lib/module-access";
 import { DuelPicksForm } from "./DuelPicksForm";
+import { DuelMatchup, type MatchupRow } from "./DuelMatchup";
 import { ArrowLeft, Swords, Clock } from "lucide-react";
 import Link from "next/link";
 import { MatchPick } from "@/generated/prisma/client";
@@ -87,7 +88,7 @@ export default async function DuelSessionPage({
     include: {
       homeTeam: { select: { name: true, flag: true, code: true } },
       awayTeam: { select: { name: true, flag: true, code: true } },
-      bets: { where: { userId, duelSessionId: sessionId }, select: { pick: true } },
+      bets: { where: { userId, duelSessionId: sessionId }, select: { pick: true, isCorrect: true } },
     },
   });
 
@@ -101,6 +102,15 @@ export default async function DuelSessionPage({
         return inRange || isExtra;
       })
     : allMatches;
+
+  // Picks del rival (para la vista de enfrentamiento)
+  const rivalBetsList = rival
+    ? await prisma.matchBet.findMany({
+        where: { userId: rival.id, duelSessionId: sessionId },
+        select: { matchId: true, pick: true, isCorrect: true },
+      })
+    : [];
+  const rivalBetsMap = new Map(rivalBetsList.map((b) => [b.matchId, b]));
 
   const lockAt = await moduleLockAt(duelSession.module);
   const locked = isLocked(lockAt);
@@ -223,6 +233,29 @@ export default async function DuelSessionPage({
               </div>
             </div>
           </div>
+        )}
+
+        {/* Head-to-head matchup (solo cuando hay rival) */}
+        {rival && (
+          <DuelMatchup
+            myName={authSession.user.name ?? "Tú"}
+            rivalName={rival.name ?? rival.email ?? "Rival"}
+            locked={locked}
+            rows={matches.map((m): MatchupRow => ({
+              id: m.id,
+              matchNumber: m.matchNumber,
+              homeName: m.homeTeam?.name ?? m.homeLabel ?? "Local",
+              homeFlag: m.homeTeam?.flag ?? null,
+              awayName: m.awayTeam?.name ?? m.awayLabel ?? "Visitante",
+              awayFlag: m.awayTeam?.flag ?? null,
+              homeScore: m.homeScore ?? null,
+              awayScore: m.awayScore ?? null,
+              myBet: m.bets[0] ? { pick: m.bets[0].pick, isCorrect: m.bets[0].isCorrect ?? null } : null,
+              rivalBet: rivalBetsMap.has(m.id)
+                ? { pick: rivalBetsMap.get(m.id)!.pick, isCorrect: rivalBetsMap.get(m.id)!.isCorrect ?? null }
+                : null,
+            }))}
+          />
         )}
 
         {/* Picks form */}
