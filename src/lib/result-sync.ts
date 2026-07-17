@@ -138,6 +138,74 @@ export async function syncKickoffs(): Promise<{ checked: number; updated: number
 // ─── Auto-mapeo de fixtures por código de equipo (abreviatura ESPN = code FIFA) ──
 
 /** Asigna externalId a los partidos (con equipos definidos) que aún no lo tienen, por código. */
+/**
+ * Sincroniza resultados de partidos de hoy/ayer al vuelo — se llama desde server components.
+ * Solo toca ESPN cuando hay partidos sin resultado que ya deberían haber terminado.
+ * En días sin partidos o antes del kickoff retorna en <30ms (solo una query a BD).
+ */
+export async function syncTodayIfNeeded(): Promise<{ updated: number; skipped: boolean }> {
+  const now = Date.now();
+
+  const pending = await prisma.match.findMany({
+    where: {
+      externalId: { not: null },
+      homeScore: null,
+      scheduledAt: { gte: new Date(now - 25 * 60 * 60 * 1000) },
+    },
+    select: {
+      id: true, externalId: true, scheduledAt: true, homeScore: true, awayScore: true, penaltiesWinner: true,
+      homeTeam: { select: { code: true } },
+      awayTeam: { select: { code: true } },
+    },
+  });
+
+  if (pending.length === 0) return { updated: 0, skipped: true };
+
+  const hasDue = pending.some((m) => now - m.scheduledAt.getTime() >= DUE_MIN_MS);
+  if (!hasDue) return { updated: 0, skipped: true };
+
+  // Rango estrecho: solo ayer + hoy (vs la temporada completa del cron)
+  const fmt = (ms: number) => new Date(ms).toISOString().slice(0, 10).replace(/-/g, "");
+  const dateRange = `${fmt(now - 86_400_000)}-${fmt(now)}`;
+
+  const fixtures = await fetchWorldCupFixtures(dateRange);
+  const byId = new Map(
+    fixtures
+      .filter((f) => isFinished(f.statusShort) && f.homeGoals !== null && f.awayGoals !== null)
+      .map((f) => [f.id, f]),
+  );
+
+  let updated = 0;
+  for (const m of pending) {
+    const f = byId.get(m.externalId!);
+    if (!f || f.homeGoals === null || f.awayGoals === null) continue;
+
+    const ourHome = m.homeTeam?.code ?? null;
+    const ourAway = m.awayTeam?.code ?? null;
+    if (ourHome && ourAway) {
+      const sameTeams =
+        (f.homeAbbr === ourHome && f.awayAbbr === ourAway) ||
+        (f.homeAbbr === ourAway && f.awayAbbr === ourHome);
+      if (!sameTeams) continue;
+    }
+
+    const reversed = !!ourHome && !!ourAway && f.homeAbbr === ourAway && f.awayAbbr === ourHome;
+    const hs = reversed ? f.awayGoals : f.homeGoals;
+    const as_ = reversed ? f.homeGoals : f.awayGoals;
+    const penWinner =
+      f.statusShort === "PEN" && f.penHome !== null && f.penAway !== null
+        ? f.penHome > f.penAway ? f.homeAbbr : f.awayAbbr
+        : null;
+
+    if (m.homeScore === hs && m.awayScore === as_ && m.penaltiesWinner === penWinner) continue;
+    await applyResult(m.id, hs, as_, penWinner);
+    updated++;
+  }
+
+  if (updated > 0) revalidateAll();
+  return { updated, skipped: false };
+}
+
 export async function autoMapFixtures(): Promise<{ mapped: number; unmapped: number[]; fixtures: number; sample: string[] }> {
   const fixtures = await fetchWorldCupFixtures();
   const sample = fixtures.slice(0, 4).map((f) => `${f.home} vs ${f.away}`);

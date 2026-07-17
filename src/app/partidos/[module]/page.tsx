@@ -6,6 +6,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { ModuleEntryGate } from "@/components/ModuleEntryGate";
 import { Leaderboard } from "@/components/Leaderboard";
 import { getModuleAccess, getLmxJornadaRanks, isLocked, getQuinielaLeaderboard, getLastJornadaWinners } from "@/lib/module-access";
+import { syncTodayIfNeeded } from "@/lib/result-sync";
 import { GROUP_MATCH_QUINIELAS, KO_QUINIELAS, LMX_JORNADAS, LMX_LIGUILLA, MODULE_META } from "@/lib/modules";
 import { Module, Stage } from "@/generated/prisma/client";
 import { MatchCard } from "../MatchCard";
@@ -46,6 +47,9 @@ export default async function QuinielaDetailPage({
   const { module: moduleParam } = await params;
   if (!VALID.has(moduleParam)) redirect("/partidos");
   const mod = moduleParam as Module;
+
+  // Sincroniza resultados de hoy al vuelo. Retorna en <30ms si no hay partidos en juego.
+  await syncTodayIfNeeded();
 
   const session = await auth();
   const userId = session!.user.id;
