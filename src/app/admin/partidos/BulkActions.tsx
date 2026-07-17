@@ -6,26 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Stage } from "@/generated/prisma/client";
 import { bulkToggleStage, bulkSetPrice } from "./actions";
 
-export function BulkActions({ stage, label }: { stage: Stage; label: string }) {
+export function BulkActions({ stage, label, matchIds }: { stage: Stage; label: string; matchIds?: string[] }) {
   const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleOpen() {
     setLoading(true);
-    await bulkToggleStage(stage, true);
+    await bulkToggleStage(stage, true, matchIds);
     setLoading(false);
   }
 
   async function handleClose() {
     setLoading(true);
-    await bulkToggleStage(stage, false);
+    await bulkToggleStage(stage, false, matchIds);
     setLoading(false);
   }
 
   async function handlePrice() {
     if (!price) return;
     setLoading(true);
-    await bulkSetPrice(stage, parseFloat(price));
+    await bulkSetPrice(stage, parseFloat(price), matchIds);
     setLoading(false);
   }
 

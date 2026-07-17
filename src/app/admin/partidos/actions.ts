@@ -44,14 +44,16 @@ export async function clearResult(id: string) {
   revalidateResults();
 }
 
-export async function bulkToggleStage(stage: Stage, open: boolean) {
-  await prisma.match.updateMany({ where: { stage }, data: { isOpen: open } });
+export async function bulkToggleStage(stage: Stage, open: boolean, matchIds?: string[]) {
+  const where = matchIds?.length ? { id: { in: matchIds } } : { stage };
+  await prisma.match.updateMany({ where, data: { isOpen: open } });
   revalidatePath("/admin/partidos");
 }
 
-export async function bulkSetPrice(stage: Stage, price: number) {
+export async function bulkSetPrice(stage: Stage, price: number, matchIds?: string[]) {
   if (isNaN(price) || price < 0) return;
-  await prisma.match.updateMany({ where: { stage }, data: { price } });
+  const where = matchIds?.length ? { id: { in: matchIds } } : { stage };
+  await prisma.match.updateMany({ where, data: { price } });
   revalidatePath("/admin/partidos");
 }
 

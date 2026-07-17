@@ -1,7 +1,8 @@
 // Cliente de resultados usando los endpoints públicos de ESPN (sin API key).
-// Scoreboard del Mundial por rango de fechas. La abreviatura de ESPN coincide con
-// el `code` FIFA de nuestros equipos, así que el mapeo es por código.
-// Config opcional: ESPN_LEAGUE (default fifa.world), ESPN_DATE_RANGE (default torneo 2026).
+// Soporta cualquier liga configurable por env vars:
+//   ESPN_LEAGUE     — slug de liga ESPN (default: mex.1 = Liga MX)
+//   ESPN_DATE_RANGE — rango de fechas YYYYMMDD-YYYYMMDD (default: Apertura 2026)
+// Para el Mundial usar: ESPN_LEAGUE=fifa.world ESPN_DATE_RANGE=20260611-20260720
 
 const ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer";
 
@@ -13,7 +14,7 @@ export type ApiFixture = {
   detail: string;        // "45'", "HT", "FT", etc.
   home: string;
   away: string;
-  homeAbbr: string;      // = code FIFA (MEX, RSA, ...)
+  homeAbbr: string;      // abreviatura ESPN del equipo local
   awayAbbr: string;
   homeGoals: number | null;
   awayGoals: number | null;
@@ -74,8 +75,8 @@ function parseEvent(e: EspnEvent): ApiFixture | null {
 }
 
 export async function fetchWorldCupFixtures(dates?: string): Promise<ApiFixture[]> {
-  const league = process.env.ESPN_LEAGUE ?? "fifa.world";
-  const range = dates ?? process.env.ESPN_DATE_RANGE ?? "20260611-20260720";
+  const league = process.env.ESPN_LEAGUE ?? "mex.1";
+  const range = dates ?? process.env.ESPN_DATE_RANGE ?? "20260718-20261220";
   const url = `${ESPN_BASE}/${league}/scoreboard?dates=${range}&limit=400`;
 
   const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" });
