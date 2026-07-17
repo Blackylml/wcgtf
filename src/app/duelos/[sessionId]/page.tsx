@@ -240,7 +240,6 @@ export default async function DuelSessionPage({
           <DuelMatchup
             myName={authSession.user.name ?? "Tú"}
             rivalName={rival.name ?? rival.email ?? "Rival"}
-            locked={locked}
             rows={matches.map((m): MatchupRow => ({
               id: m.id,
               matchNumber: m.matchNumber,

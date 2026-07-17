@@ -53,12 +53,10 @@ export function DuelMatchup({
   rows,
   myName,
   rivalName,
-  locked,
 }: {
   rows: MatchupRow[];
   myName: string;
   rivalName: string;
-  locked: boolean;
 }) {
   if (rows.length === 0) return null;
 
@@ -119,18 +117,13 @@ export function DuelMatchup({
 
               {/* Rival pick — right aligned */}
               <div className="flex items-center justify-end gap-1.5">
-                <PickBadge bet={row.rivalBet} reveal={locked} />
+                <PickBadge bet={row.rivalBet} reveal={true} />
               </div>
             </div>
           );
         })}
       </div>
 
-      {!locked && (
-        <p className="text-center text-[10px] text-slate-600 py-2.5 border-t border-white/[0.04]">
-          Los picks del rival se revelan al cerrar la quiniela
-        </p>
-      )}
     </div>
   );
 }

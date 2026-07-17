@@ -329,9 +329,7 @@ export function DuelCard({
       return (
         <div className="space-y-3">
           <HeadToHead pair={userPair} rival={rival} currentUser={currentUser} prize={prize} />
-          {userPair.myScore == null && (
-            <PicksLink href={`/duelos/${session.id}`} label="Ver / cambiar mis picks" />
-          )}
+          <PicksLink href={`/duelos/${session.id}`} label="Ver cómo va el duelo" />
         </div>
       );
     }
