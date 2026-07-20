@@ -34,6 +34,15 @@ export async function moduleLockAt(module: Module): Promise<Date | null> {
     });
     return first?.scheduledAt ?? null;
   }
+  const lmxJ = LMX_JORNADAS.find((x) => x.module === module);
+  if (lmxJ) {
+    const first = await prisma.match.findFirst({
+      where: { stage: "JORNADA", matchNumber: { gte: lmxJ.min, lte: lmxJ.max } },
+      orderBy: { scheduledAt: "asc" },
+      select: { scheduledAt: true },
+    });
+    return first?.scheduledAt ?? null;
+  }
   return null;
 }
 
