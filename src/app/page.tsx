@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { NextMatchHero, type PickPeople } from "@/components/NextMatchHero";
 import { getApprovedModules, getLastJornadaInfo } from "@/lib/module-access";
+import { LMX_JORNADAS } from "@/lib/modules";
 import { QuinielaPositionCard, type QuinielaSlot } from "@/components/QuinielaPositionCard";
 import { WinnerPopup } from "@/components/WinnerPopup";
 import { getJornadaReactions } from "@/app/jornada-actions";
@@ -68,10 +69,6 @@ const STEPS = [
   { n: 4, icon: Gift,      label: "Gana premios",          tint: "text-purple-400", badge: "bg-purple-400/10 ring-purple-400/30" },
 ];
 
-// J1=1001-1009, J2=1010-1018 … (9 partidos por jornada)
-function matchNumToJornada(matchNumber: number) {
-  return Math.ceil((matchNumber - 1000) / 9);
-}
 
 export default async function HomePage() {
   const session = await auth();
@@ -114,10 +111,16 @@ export default async function HomePage() {
     orderBy: { matchNumber: "desc" },
     select: { matchNumber: true },
   });
-  const activeJornadaNum = lastStarted ? matchNumToJornada(lastStarted.matchNumber) : 0;
-  const activeLmxMod: Module | null = activeJornadaNum > 0
-    ? (`LMX_J${activeJornadaNum}` as Module)
+  // Use LMX_JORNADAS config to resolve module — avoids bogus module strings for
+  // extra/desempate match numbers (e.g. 9002) that don't fit the simple formula.
+  const activeJornada = lastStarted
+    ? (LMX_JORNADAS.find((j) => {
+        const inRange = lastStarted.matchNumber >= j.min && lastStarted.matchNumber <= j.max;
+        const isExtra = j.extra?.includes(lastStarted.matchNumber) ?? false;
+        return inRange || isExtra;
+      }) ?? null)
     : null;
+  const activeLmxMod: Module | null = activeJornada?.module ?? null;
 
   // Stats del usuario
   const [matchBetsCorrect, specialBetsCorrect, validModules, lastJornada] = await Promise.all([
@@ -154,7 +157,7 @@ export default async function HomePage() {
     if (mine) {
       const rank = rows.filter((r) => r.points > mine.points).length + 1;
       activeSlots = [{
-        label:  `Jornada ${activeJornadaNum}`,
+        label:  activeJornada?.label ?? "Jornada activa",
         rank,
         total:  rows.length,
         points: mine.points,
