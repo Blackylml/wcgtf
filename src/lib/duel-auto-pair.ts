@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { LMX_JORNADAS } from "./modules";
+import type { Prisma } from "@/generated/prisma/client";
 
 /**
  * Core pairing algorithm for one DuelSession.
@@ -131,4 +132,86 @@ export async function autoPairReadySessions(): Promise<string[]> {
   }
 
   return paired;
+}
+
+/**
+ * Resolves finished duels: counts picks, sets scores + winner, distributes credits.
+ *
+ * Runs on every duelos page load (lazy). The atomic claim (prizeGiven flip) ensures
+ * concurrent calls never double-pay — only the first writer proceeds.
+ *
+ * Returns labels of pairs resolved on this call.
+ */
+export async function resolveFinishedDuels(): Promise<string[]> {
+  const pairs = await prisma.duelPair.findMany({
+    where: { prizeGiven: false },
+    include: { session: { select: { id: true, module: true, label: true } } },
+  });
+  if (pairs.length === 0) return [];
+
+  const resolved: string[] = [];
+
+  for (const pair of pairs) {
+    const jornada = LMX_JORNADAS.find((j) => j.module === pair.session.module);
+    if (!jornada) continue;
+
+    // All match numbers for this jornada (range minus excludes, plus extras)
+    const nums: number[] = [];
+    for (let n = jornada.min; n <= jornada.max; n++) {
+      if (!jornada.exclude?.includes(n)) nums.push(n);
+    }
+    for (const n of jornada.extra ?? []) nums.push(n);
+
+    const matches = await prisma.match.findMany({
+      where: { matchNumber: { in: nums } },
+      select: { id: true, homeScore: true },
+    });
+
+    // Skip until every match has a result
+    if (matches.length === 0 || matches.some((m) => m.homeScore === null)) continue;
+
+    const matchIds = matches.map((m) => m.id);
+
+    const [score1, score2] = await Promise.all([
+      prisma.matchBet.count({ where: { userId: pair.user1Id, duelSessionId: pair.sessionId, matchId: { in: matchIds }, isCorrect: true } }),
+      prisma.matchBet.count({ where: { userId: pair.user2Id, duelSessionId: pair.sessionId, matchId: { in: matchIds }, isCorrect: true } }),
+    ]);
+
+    const winnerId = score1 > score2 ? pair.user1Id : score1 < score2 ? pair.user2Id : null;
+    const prize = Number(pair.prizePool);
+
+    // Atomic claim — if another concurrent call already claimed this pair, skip.
+    const claim = await prisma.duelPair.updateMany({
+      where: { id: pair.id, prizeGiven: false },
+      data: { score1, score2, winnerId, prizeGiven: true },
+    });
+    if (claim.count === 0) continue;
+
+    const ops: Prisma.PrismaPromise<unknown>[] = [];
+
+    if (winnerId) {
+      ops.push(
+        prisma.user.update({ where: { id: winnerId }, data: { credits: { increment: prize } } }),
+        prisma.creditTransaction.create({
+          data: { userId: winnerId, amount: prize, type: "PRIZE_WIN", description: `Duelo 1v1 ganado: ${pair.session.label}`, refId: pair.id },
+        }),
+      );
+    } else {
+      // Tie — return half to each player
+      const half = prize / 2;
+      for (const uid of [pair.user1Id, pair.user2Id]) {
+        ops.push(
+          prisma.user.update({ where: { id: uid }, data: { credits: { increment: half } } }),
+          prisma.creditTransaction.create({
+            data: { userId: uid, amount: half, type: "REFUND", description: `Duelo 1v1 empatado (devolución): ${pair.session.label}`, refId: pair.id },
+          }),
+        );
+      }
+    }
+
+    if (ops.length > 0) await prisma.$transaction(ops);
+    resolved.push(pair.session.label);
+  }
+
+  return resolved;
 }

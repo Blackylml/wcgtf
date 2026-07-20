@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { LMX_JORNADAS } from "@/lib/modules";
 import { moduleLockAt, isLocked } from "@/lib/module-access";
+import { resolveFinishedDuels } from "@/lib/duel-auto-pair";
 import { DuelPicksForm } from "./DuelPicksForm";
 import { DuelMatchup, type MatchupRow } from "./DuelMatchup";
 import { ArrowLeft, Swords, Clock } from "lucide-react";
@@ -52,6 +53,8 @@ export default async function DuelSessionPage({
   const authSession = await auth();
   if (!authSession?.user?.id) redirect("/login");
   const userId = authSession.user.id;
+
+  await resolveFinishedDuels();
 
   const duelSession = await prisma.duelSession.findUnique({
     where: { id: sessionId },
