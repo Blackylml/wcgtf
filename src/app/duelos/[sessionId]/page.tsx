@@ -59,7 +59,7 @@ export default async function DuelSessionPage({
   const duelSession = await prisma.duelSession.findUnique({
     where: { id: sessionId },
     include: {
-      entries: { where: { userId } },
+      entries: { where: { userId }, select: { id: true, paired: true, refunded: true, goalsGuess: true } },
       pairs: {
         where: { OR: [{ user1Id: userId }, { user2Id: userId }] },
         include: {
@@ -106,13 +106,21 @@ export default async function DuelSessionPage({
       })
     : allMatches;
 
-  // Picks del rival (para la vista de enfrentamiento)
-  const rivalBetsList = rival
-    ? await prisma.matchBet.findMany({
-        where: { userId: rival.id, duelSessionId: sessionId },
-        select: { matchId: true, pick: true, isCorrect: true },
-      })
-    : [];
+  // Picks + goalsGuess del rival
+  const [rivalBetsList, rivalEntry] = await Promise.all([
+    rival
+      ? prisma.matchBet.findMany({
+          where: { userId: rival.id, duelSessionId: sessionId },
+          select: { matchId: true, pick: true, isCorrect: true },
+        })
+      : Promise.resolve([]),
+    rival
+      ? prisma.duelEntry.findUnique({
+          where: { sessionId_userId: { sessionId, userId: rival.id } },
+          select: { goalsGuess: true },
+        })
+      : Promise.resolve(null),
+  ]);
   const rivalBetsMap = new Map(rivalBetsList.map((b) => [b.matchId, b]));
 
   const lockAt = await moduleLockAt(duelSession.module);
@@ -245,6 +253,8 @@ export default async function DuelSessionPage({
             myImage={authSession.user.image ?? null}
             rivalName={rival.name ?? rival.email ?? "Rival"}
             rivalImage={rival.image ?? null}
+            myGoalsGuess={entry?.goalsGuess ?? null}
+            rivalGoalsGuess={rivalEntry?.goalsGuess ?? null}
             rows={matches.map((m): MatchupRow => ({
               id: m.id,
               matchNumber: m.matchNumber,
@@ -278,6 +288,7 @@ export default async function DuelSessionPage({
           }))}
           locked={locked}
           lockLabel={lockLabel}
+          initialGoalsGuess={entry?.goalsGuess ?? null}
         />
 
 

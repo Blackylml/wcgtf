@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { MatchPick } from "@/generated/prisma/client";
 import { saveDuelBets } from "./actions";
 import { FlagCircle } from "@/components/FlagCircle";
-import { Lock, Clock } from "lucide-react";
+import { Lock, Clock, Goal } from "lucide-react";
 
 type DuelMatch = {
   id: string;
@@ -51,11 +51,13 @@ export function DuelPicksForm({
   matches,
   locked,
   lockLabel,
+  initialGoalsGuess,
 }: {
   sessionId: string;
   matches: DuelMatch[];
   locked: boolean;
   lockLabel: string;
+  initialGoalsGuess: number | null;
 }) {
   const router = useRouter();
 
@@ -66,14 +68,18 @@ export function DuelPicksForm({
   };
   const [picks, setPicks] = useState<Record<string, MatchPick>>(init);
   const [saved, setSaved] = useState<Record<string, MatchPick>>(init);
+  const [goalsGuess, setGoalsGuess] = useState<string>(initialGoalsGuess != null ? String(initialGoalsGuess) : "");
+  const [savedGoals, setSavedGoals] = useState<string>(initialGoalsGuess != null ? String(initialGoalsGuess) : "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const done = matches.filter((m) => picks[m.id]).length;
   const allPicked = matches.length > 0 && matches.every((m) => picks[m.id]);
-  const changed = matches.some((m) => picks[m.id] && picks[m.id] !== saved[m.id]);
+  const goalsVal = goalsGuess.trim() === "" ? null : parseInt(goalsGuess, 10);
+  const goalsOk = goalsVal !== null && Number.isInteger(goalsVal) && goalsVal >= 0;
+  const changed = matches.some((m) => picks[m.id] && picks[m.id] !== saved[m.id]) || goalsGuess !== savedGoals;
   const missing = matches.filter((m) => !picks[m.id]).length;
-  const fullyConfirmed = allPicked && !changed;
+  const fullyConfirmed = allPicked && goalsOk && !changed;
   const interactable = !locked;
 
   function choose(id: string, pick: MatchPick) {
@@ -83,13 +89,15 @@ export function DuelPicksForm({
   }
 
   async function confirm() {
+    if (!goalsOk) { setError("Indica cuántos goles habrá en total"); return; }
     setLoading(true);
     setError("");
     const payload = matches.filter((m) => picks[m.id]).map((m) => ({ matchId: m.id, pick: picks[m.id] }));
-    const res = await saveDuelBets(sessionId, payload);
+    const res = await saveDuelBets(sessionId, payload, goalsVal!);
     setLoading(false);
     if (res?.error) { setError(res.error); return; }
     setSaved({ ...picks });
+    setSavedGoals(goalsGuess);
     router.refresh();
   }
 
@@ -169,6 +177,32 @@ export function DuelPicksForm({
         })}
       </div>
 
+      {/* Goals tiebreaker */}
+      <div className={`mt-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3 flex items-center gap-3 ${locked ? "opacity-50" : ""}`}>
+        <span className="grid place-items-center w-8 h-8 rounded-lg bg-amber-400/10 ring-1 ring-amber-400/25 shrink-0">
+          <Goal size={15} className="text-amber-400" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold text-slate-300 leading-tight">Desempate · Total de goles</p>
+          <p className="text-[10px] text-slate-600 mt-0.5">¿Cuántos goles habrá en la jornada?</p>
+        </div>
+        {locked ? (
+          <span className="font-display font-extrabold text-xl tabular-nums text-amber-300 shrink-0">
+            {savedGoals !== "" ? savedGoals : "—"}
+          </span>
+        ) : (
+          <input
+            type="number"
+            min={0}
+            max={99}
+            value={goalsGuess}
+            onChange={(e) => { setError(""); setGoalsGuess(e.target.value); }}
+            placeholder="0"
+            className="w-16 bg-white/[0.06] border border-white/[0.12] rounded-lg text-center font-display font-bold text-lg text-white tabular-nums py-1.5 focus:outline-none focus:border-amber-400/50 focus:bg-white/[0.09] transition-colors shrink-0"
+          />
+        )}
+      </div>
+
       {error && <p className="text-red-400 text-xs mt-2 text-center">{error}</p>}
 
       {/* Save button */}
@@ -184,7 +218,7 @@ export function DuelPicksForm({
                 : "bg-white/[0.04] text-slate-500 border border-white/10"
           }`}
         >
-          {loading ? "Guardando..." : fullyConfirmed ? "✓ Picks guardados" : allPicked ? "Guardar picks" : `Faltan ${missing}`}
+          {loading ? "Guardando..." : fullyConfirmed ? "✓ Picks guardados" : allPicked && goalsOk ? "Guardar picks" : !allPicked ? `Faltan ${missing} picks` : "Falta el total de goles"}
         </button>
       )}
     </section>

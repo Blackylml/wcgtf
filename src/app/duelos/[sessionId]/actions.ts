@@ -9,7 +9,8 @@ import { LMX_JORNADAS } from "@/lib/modules";
 
 export async function saveDuelBets(
   sessionId: string,
-  picks: { matchId: string; pick: MatchPick }[]
+  picks: { matchId: string; pick: MatchPick }[],
+  goalsGuess?: number,
 ): Promise<{ success?: boolean; error?: string }> {
   const authSession = await auth();
   if (!authSession?.user?.id) return { error: "No autenticado" };
@@ -49,15 +50,29 @@ export async function saveDuelBets(
       .map((m) => m.id)
   );
 
+  const ops: Promise<unknown>[] = [];
+
   for (const { matchId, pick } of picks) {
     if (!validIds.has(matchId)) continue;
-    await prisma.matchBet.upsert({
-      where: { userId_matchId_duelSessionId: { userId, matchId, duelSessionId: sessionId } },
-      create: { userId, matchId, pick, duelSessionId: sessionId },
-      update: { pick },
-    });
+    ops.push(
+      prisma.matchBet.upsert({
+        where: { userId_matchId_duelSessionId: { userId, matchId, duelSessionId: sessionId } },
+        create: { userId, matchId, pick, duelSessionId: sessionId },
+        update: { pick },
+      }),
+    );
   }
 
+  if (goalsGuess !== undefined && Number.isInteger(goalsGuess) && goalsGuess >= 0) {
+    ops.push(
+      prisma.duelEntry.update({
+        where: { sessionId_userId: { sessionId, userId } },
+        data: { goalsGuess },
+      }),
+    );
+  }
+
+  await Promise.all(ops);
   revalidatePath(`/duelos/${sessionId}`);
   return { success: true };
 }

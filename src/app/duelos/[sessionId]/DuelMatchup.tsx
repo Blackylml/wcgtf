@@ -80,18 +80,26 @@ export function DuelMatchup({
   myImage,
   rivalName,
   rivalImage,
+  myGoalsGuess,
+  rivalGoalsGuess,
 }: {
   rows: MatchupRow[];
   myName: string;
   myImage: string | null;
   rivalName: string;
   rivalImage: string | null;
+  myGoalsGuess: number | null;
+  rivalGoalsGuess: number | null;
 }) {
   if (rows.length === 0) return null;
 
   const myPts  = rows.filter((r) => r.myBet?.isCorrect    === true).length;
   const rivPts = rows.filter((r) => r.rivalBet?.isCorrect === true).length;
   const done   = rows.filter((r) => r.myBet?.isCorrect    != null).length;
+  const actualGoals = rows
+    .filter((r) => r.homeScore !== null && r.awayScore !== null)
+    .reduce((s, r) => s + (r.homeScore ?? 0) + (r.awayScore ?? 0), 0);
+  const allDone = done === rows.length && rows.length > 0;
 
   const myFirst = myName.split(" ")[0];
   const rivFirst = rivalName.split(" ")[0];
@@ -125,6 +133,24 @@ export function DuelMatchup({
           <Avatar name={rivalName} image={rivalImage} size={36} />
         </div>
       </div>
+
+      {/* Goals tiebreaker bar */}
+      {(myGoalsGuess !== null || rivalGoalsGuess !== null) && (
+        <div className="flex items-center justify-between gap-2 px-4 py-2 bg-amber-400/[0.04] border-b border-amber-400/[0.08]">
+          <span className="font-display font-bold text-base tabular-nums text-amber-300">
+            {myGoalsGuess ?? "—"}
+          </span>
+          <div className="flex flex-col items-center gap-0">
+            <span className="text-[9px] text-amber-400/70 font-semibold uppercase tracking-wider">⚽ Desempate · goles</span>
+            {allDone && (
+              <span className="text-[10px] font-bold text-amber-400 tabular-nums">Real: {actualGoals}</span>
+            )}
+          </div>
+          <span className="font-display font-bold text-base tabular-nums text-amber-300">
+            {rivalGoalsGuess ?? "—"}
+          </span>
+        </div>
+      )}
 
       {/* Match rows */}
       <div className="divide-y divide-white/[0.04]">

@@ -164,7 +164,7 @@ export async function resolveFinishedDuels(): Promise<string[]> {
 
     const matches = await prisma.match.findMany({
       where: { matchNumber: { in: nums } },
-      select: { id: true, homeScore: true },
+      select: { id: true, homeScore: true, awayScore: true },
     });
 
     // Skip until every match has a result
@@ -172,12 +172,27 @@ export async function resolveFinishedDuels(): Promise<string[]> {
 
     const matchIds = matches.map((m) => m.id);
 
-    const [score1, score2] = await Promise.all([
+    const [score1, score2, entry1, entry2] = await Promise.all([
       prisma.matchBet.count({ where: { userId: pair.user1Id, duelSessionId: pair.sessionId, matchId: { in: matchIds }, isCorrect: true } }),
       prisma.matchBet.count({ where: { userId: pair.user2Id, duelSessionId: pair.sessionId, matchId: { in: matchIds }, isCorrect: true } }),
+      prisma.duelEntry.findUnique({ where: { sessionId_userId: { sessionId: pair.sessionId, userId: pair.user1Id } }, select: { goalsGuess: true } }),
+      prisma.duelEntry.findUnique({ where: { sessionId_userId: { sessionId: pair.sessionId, userId: pair.user2Id } }, select: { goalsGuess: true } }),
     ]);
 
-    const winnerId = score1 > score2 ? pair.user1Id : score1 < score2 ? pair.user2Id : null;
+    let winnerId: string | null = null;
+    if (score1 > score2) {
+      winnerId = pair.user1Id;
+    } else if (score2 > score1) {
+      winnerId = pair.user2Id;
+    } else if (entry1?.goalsGuess != null && entry2?.goalsGuess != null) {
+      // Tiebreaker: closest goals guess to actual total
+      const actualGoals = matches.reduce((s, m) => s + (m.homeScore ?? 0) + (m.awayScore ?? 0), 0);
+      const diff1 = Math.abs(entry1.goalsGuess - actualGoals);
+      const diff2 = Math.abs(entry2.goalsGuess - actualGoals);
+      if (diff1 < diff2) winnerId = pair.user1Id;
+      else if (diff2 < diff1) winnerId = pair.user2Id;
+      // if equal difference → true tie, winnerId stays null
+    }
     const prize = Number(pair.prizePool);
 
     // Atomic claim — if another concurrent call already claimed this pair, skip.

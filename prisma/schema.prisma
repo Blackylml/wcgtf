@@ -452,12 +452,13 @@ model DuelTiebreakerPick {
 }
 
 model DuelEntry {
-  id        String      @id @default(cuid())
-  sessionId String
-  userId    String
-  paired    Boolean     @default(false)
-  refunded  Boolean     @default(false)
-  createdAt DateTime    @default(now())
+  id          String      @id @default(cuid())
+  sessionId   String
+  userId      String
+  paired      Boolean     @default(false)
+  refunded    Boolean     @default(false)
+  goalsGuess  Int?        // desempate: total de goles de la jornada
+  createdAt   DateTime    @default(now())
 
   session   DuelSession @relation(fields: [sessionId], references: [id])
   user      User        @relation(fields: [userId], references: [id])
