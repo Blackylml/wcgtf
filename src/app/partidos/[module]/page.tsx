@@ -48,6 +48,15 @@ export default async function QuinielaDetailPage({
   if (!VALID.has(moduleParam)) redirect("/partidos");
   const mod = moduleParam as Module;
 
+  // LMX jornadas → siempre redirige al duelo 1v1 correspondiente
+  if (LMX_JORNADAS.some((j) => j.module === mod)) {
+    const duelSession = await prisma.duelSession.findFirst({
+      where: { module: mod },
+      select: { id: true },
+    });
+    redirect(duelSession ? `/duelos/${duelSession.id}` : "/duelos");
+  }
+
   // Sincroniza resultados de hoy al vuelo. Retorna en <30ms si no hay partidos en juego.
   await syncTodayIfNeeded();
 
